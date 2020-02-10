@@ -280,7 +280,6 @@ class ConvolutionalNeuralNetwork(_ConvNetBase):
 		>>> 	#[1024]
 		>>> 	], activation=activations, input_shape=[512,512,3])
 		>>> print(a.shape_before_flatten)
-		>>> a = tf.keras.Sequential([a])
 		>>> print(a(inputs).shape) # the model must be run for keras to collect the trainable variables/weights
 		>>> print(len(a.weights))
 	Args:
@@ -468,26 +467,28 @@ class DeconvolutionalNeuralNetwork(_ConvNetBase):
 
 def main():
 	# for testing.
-	import numpy as np
-	inputs = np.random.randint(0,255,size=[8,512,512,3], dtype=np.uint8).astype(np.float32)
-	activations = {"default":tf.nn.relu, -1:lambda x: x}
-	a = ConvolutionalNeuralNetwork(*[
-		[16,5,1,2], 
-		[[32,1,1], [32,3,1], [32,3,1], 2],
-		[[64,1,1], [64,3,1], [64,3,1], 2], 
-		[[128,1,1], [128,3,1], [128,3,1], 2], 
-		[[256,1,1], [256,3,1], [256,3,1], 2], 
-		#[[512,1,1], [512,3,1], [512,3,1], 2], 
-		#[[512,1,1], [512,3,1], [512,3,1], 2], 
-		[[256,3,1], [256,3,1], 2], 
-		[[256,3,1], [256,3,1], 1], 
-		[4096], # this is the number of latent elements
-		#[1024]
-		], activation=activations, shape_input=[512,512,3])
-	print(a.shape_before_flatten)
-	a = tf.keras.Sequential([a])
-	print(a(inputs).shape) # the model must be run for keras to collect the trainable variables/weights
-	print(len(a.weights))
+		import numpy as np
+		latent = np.random.normal(size=[8,1024]).astype(np.float32)
+		activations = {"default":tf.nn.relu, -1:lambda x: x}
+		layer_params = [
+			[16,5,1,2], # conv layer, last element is amount of upscaling, for no upscaling, put None.
+			[[32,1,1], [32,3,1], [32,3,1], 2], # resnet block, last element is amount of pooling, for no pooling, put None.
+			[[64,1,1], [64,3,1], [64,3,1], 2], 
+			[[128,1,1], [128,3,1], [128,3,1], 2], 
+			[[256,1,1], [256,3,1], [256,3,1], 2], 
+			#[[512,1,1], [512,3,1], [512,3,1], 2], 
+			#[[512,1,1], [512,3,1], [512,3,1], 2], 
+			[[256,3,1], [256,3,1], 2], 
+			[[256,3,1], [256,3,1], 1], 
+			[4096], # this is the number of latent elements
+			#[1024]
+			]
+		layer_params = layer_params[::-1]
+		layer_params[-1][0] = 3 #num channels
+		decoder = DeconvolutionalNeuralNetwork(*layer_params, activation=activations,shape_before_flatten=[8,8,256])
+		
+		recon = decoder(latent)
+		print(recon)
 
 
 if __name__ == "__main__":
