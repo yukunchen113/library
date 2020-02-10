@@ -77,10 +77,10 @@ class VariationalAutoEncoder():
 		create the encoder
 
 		Args:
-			pred: This is the initial input to the encoder, it is the input.
+			pred: This is the initial input to the encoder
 
 		Returns:
-			None
+			latent_output, [latent_mean, latent_log_var]
 		"""
 		latent_size = self._latent_size
 		with tf.variable_scope("encoder", reuse=reuse):
