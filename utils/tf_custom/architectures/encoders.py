@@ -6,6 +6,14 @@ import architecture_params as ap
 
 class _GaussianEncoder(base.ConvolutionalNeuralNetwork):
 	def __init__(self, layer_params, num_latents, shape_input, activations=None):
+		"""Base clase for a gaussian encoder
+		
+		Args:
+			layer_params (list): layer size specs
+			num_latents (int): the number of latent elements
+			shape_input (list): the shape of the input image (not including batch size)
+			activations (dict): this is a dictionary of activations
+		"""
 		self.shape_input = shape_input
 		self.num_latents = num_latents
 		if activations is None:
@@ -25,14 +33,28 @@ class _GaussianEncoder(base.ConvolutionalNeuralNetwork):
 class GaussianEncoder64(_GaussianEncoder):
 	shape_input = [64,64,3]
 	layer_params = ap.simple64_layer_parameters
-	def __init__(self, num_latents=10, activations=None):
+	def __init__(self, num_latents=10, activations=None, **kwargs):
+		"""This is a gaussian encoder that takes in 64x64x3 images
+		This is the architecture used in beta-VAE literature
+		
+		Args:
+			num_latents (int): the number of latent elements
+			shape_input (list): the shape of the input image (not including batch size)
+		"""
 		super().__init__(self.layer_params, num_latents, self.shape_input, activations)
 
 
 class GaussianEncoder512(_GaussianEncoder):
 	shape_input = [512,512,3]
 	layer_params = ap.hq512_layer_parameters
-	def __init__(self, num_latents=1024, activations=None):
+	def __init__(self, num_latents=1024, activations=None, **kwargs):
+		"""This is a gaussian encoder that takes in 512x512x3 images
+		This is the architecture used in beta-VAE literature
+		
+		Args:
+			num_latents (int): the number of latent elements
+			shape_input (list): the shape of the input image (not including batch size)
+		"""
 		super().__init__(self.layer_params, num_latents, self.shape_input, activations)
 
 
