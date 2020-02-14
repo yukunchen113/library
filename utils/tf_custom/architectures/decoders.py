@@ -1,8 +1,8 @@
 """This file contains the decoders that can be used in a VAE 
 """
-import base
+from utils.tf_custom.architectures import base
 import tensorflow as tf
-import architecture_params as ap
+from utils.tf_custom.architectures import architecture_params as ap
 
 class _Decoder(base.DeconvolutionalNeuralNetwork):
 	def __init__(self, layer_params, shape_input, activations=None, shape_before_flatten=None):

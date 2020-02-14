@@ -1,2 +1,2 @@
 import os
-datapath = os.path.join(os.environ["HOME"], "data", "Data")
+datapath = os.path.join(os.environ["HOME"], "data")

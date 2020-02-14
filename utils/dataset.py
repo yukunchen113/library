@@ -13,66 +13,7 @@ import random
 import h5py
 
 #utils packages
-from . import general_tools
-from . import process_data
-
-
-def get_3dshapes_data(datapath, default_batch_size, return_batch_function=False):
-	"""
-	Parts of this code is from https://github.com/deepmind/3d-shapes/blob/master/3dshapes_loading_example.ipynb
-
-	if remove_past is True in get_batch, loading will take one second longer.
-
-	Args:
-		datapath
-			- this is the path for the general dataset folder.
-	Returns:
-		images, labels
-	"""
-	datapath = os.path.join(datapath, '3dshapes', '3dshapes.h5')
-
-	if return_batch_function:
-		class quick_get_batch():
-			def __init__(self):
-				with h5py.File(datapath, 'r') as dset:
-					self.images = dset['images'][:6000]
-					self.labels = dset['labels'][:6000]
-				self._handles = np.arange(self.labels.shape[0])
-
-			def get_batch(self, batch_size=None, remove_past=False):
-				#timer = general_tools.Timer()
-				if batch_size is None:
-					batch_size = default_batch_size						
-				#timer.print("batch size set")
-				indices = np.random.choice(self._handles, size=batch_size, replace=True).astype(int)
-				#timer.print("random choice")
-				images = self.images[indices]
-				labels = self.labels[indices]
-				#timer.print("got labels and images")
-				if remove_past:
-					self._handles = [i for i in self._handles if not i in indices] 
-				#timer.print("removed past labels")
-				
-				return images, labels
-
-
-		quick_get_batch_instance = quick_get_batch()
-		return quick_get_batch_instance.get_batch
-
-	dataset = h5py.File(datapath, 'r')
-	images = dataset['images'][()]  # array shape [480000,64,64,3], uint8 in range(256)
-	labels = dataset['labels'][()]  # array shape [480000,6], float64
-	image_shape = images.shape[1:]  # [64,64,3]
-	label_shape = labels.shape[1:]  # [6]
-	n_samples = labels.shape[0]  # 10*10*10*8*4*15=480000
-
-	_FACTORS_IN_ORDER = ['floor_hue', 'wall_hue', 'object_hue', 'scale', 'shape',
-						 'orientation']
-	_NUM_VALUES_PER_FACTOR = {'floor_hue': 10, 'wall_hue': 10, 'object_hue': 10, 
-							  'scale': 8, 'shape': 4, 'orientation': 15}
-
-	images, labels = process_data.shuffle_arrays(images, labels)
-	return images, labels
+from utils.general_tools import * # need the from if importing this file
 
 #get the dataset
 def get_mnist_data(datapath, shuffle=False):
@@ -115,7 +56,7 @@ def get_mnist_data(datapath, shuffle=False):
 	ret = create_dataset_dict(*datasets)
 	return ret["data"], ret["labels"]
 
-def get_celeba_data(datapath, save_new=False, get_group=True, group_num=1, shuffle=False, max_len_only=True, is_HD=True, **kwargs):
+def get_celeba_data(datapath, save_new=False, get_group=True, group_num=1, shuffle=False, max_len_only=True, is_HD=256, **kwargs):
 	"""
 	This will retrieve the celeba dataset
 
@@ -132,22 +73,27 @@ def get_celeba_data(datapath, save_new=False, get_group=True, group_num=1, shuff
 		group_num:  The number of groups to load at once
 		shuffle:  Shuffles the groups, if loading with groups
 		max_len_only:  This will force the groups to be of max length.
-		is_HD: Whether to extract the hd version (True) or default version (False)
+		is_HD: Whether to extract the hd version (int - 64,128,256,512,1024) or default version (False)
 		**kwargs: These are any other irrelevant kwargs.
 
 	Returns:
 		data, labels if not get group, else dataset object, get_group object.
 	"""
 	#loads from numpy file, if available or specified, else save to numpy file
+	#should make these paths into constants in a python file at the directory, or in general constants
 	if is_HD:
-		datapath = os.path.join(datapath, "celeba_HD", "dataset")
+		datapath = os.path.join(datapath, "celeba-hq")
+		images_path = "celeba-%d"%is_HD
 	else:
 		datapath = os.path.join(datapath, "celeba")
+		images_path = "images"
+
 	labels_file = "list_attr_celeba.txt"
-	images_saved_file = "images_saved.hdf5"
+	images_saved_file = "%s.hdf5"%images_path
+	
 	images_saved_path = os.path.join(datapath, images_saved_file)
 	labels_path = os.path.join(datapath, labels_file)
-	images_path = os.path.join(datapath, "images")
+	images_path = os.path.join(datapath, images_path)
 
 	dataset = get_data(images_saved_path)
 	if not save_new:
@@ -168,9 +114,16 @@ def get_celeba_data(datapath, save_new=False, get_group=True, group_num=1, shuff
 		labels = []
 		labels_names = total_labels[1].split()
 		print("loading labels...")
+		incongruency_counter = 0
 		for line in total_labels[2:]:
-			labels.append(line.split()[1:])
-			filenames.append(os.path.join(images_path, line.split()[0]))
+			filepath = os.path.join(images_path, line.split()[0])
+			if os.path.exists(filepath):
+				labels.append(line.split()[1:])
+				filenames.append(os.path.join(images_path, line.split()[0]))
+			else:
+				incongruency_counter+=1
+		if incongruency_counter:
+			print("Skipped labels, ", incongruency_counter, "remaining: ", len(filenames))
 		labels = (np.asarray(labels).astype(int)+1)/2
 		
 		dataset.save_by_group(labels, filenames, 64)
@@ -334,11 +287,13 @@ class get_data():
 		"""
 		loads in data by groups and saves them accordingly.
 		"""
+		import cv2
 		save_path = self.data_savepath
 		num_data = len(filenames)
 		num_groups = num_data//groups+int(bool(num_data%groups))
+		print("num images per group: ", int(num_data/num_groups), "total: ", num_data)
 		for i in range(num_groups):
-			print("\r"+loading_bar(i, num_groups), end="")
+			print("\rgroups loaded: "+loading_bar(i, num_groups), end="")
 			start_num = i*groups
 			self.set_labels(labels[start_num:(i+1)*groups])
 			self.get_images_from_filenames(filenames[start_num:(i+1)*groups], False)
@@ -365,7 +320,9 @@ class get_data():
 		for i in range(len(filenames_list)):
 			if print_loading_bar:
 				print("\r"+loading_bar(i, len(filenames_list)), end="")
-			image = lycon.load(filenames_list[i])
+			#image = lycon.load(filenames_list[i])
+			image = cv2.imread(filenames_list[i])
+
 			#print("MIN, MAX", np.amin(image.numpy()), np.amax(image.numpy()))
 			if images is None:
 				images = np.zeros((len(filenames_list), *image.shape), np.uint8)

@@ -1,8 +1,8 @@
 """This file contains the encoders that can be used in a VAE 
 """
-import base
+from utils.tf_custom.architectures import base
 import tensorflow as tf
-import architecture_params as ap
+from utils.tf_custom.architectures import architecture_params as ap
 
 class _GaussianEncoder(base.ConvolutionalNeuralNetwork):
 	def __init__(self, layer_params, num_latents, shape_input, activations=None):
