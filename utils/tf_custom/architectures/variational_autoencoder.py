@@ -43,6 +43,7 @@ class BetaTCVAE(VariationalAutoencoder):
 def main():
 	import numpy as np
 	import os
+	import shutil
 	batch_size = 8
 
 	size = [batch_size,64,64,3]
@@ -50,10 +51,14 @@ def main():
 	a = BetaTCVAE(2)
 
 	# test get reconstruction, only asserts shape
-	assert a(inputs).shape == tuple(size)
+	if not a(inputs).shape == tuple(size):
+		print("input shape is different from size, change spec")
+		custom_exit()
 	
 	# test get vae losses
-	assert len(a.losses) == 1
+	if not len(a.losses) == 1:
+		print("regularizer loss not included")
+		custom_exit()
 
 	# test model saving
 	testdir = "test"
@@ -64,17 +69,32 @@ def main():
 	a.save_weights(testfile)
 
 	# test model training
+	#model = 
 	a.compile(optimizer=tf.keras.optimizers.Adam(),
 		loss=tf.keras.losses.MSE)
-	a.fit(inputs, inputs, batch_size=batch_size, epochs=3)
+	a.fit(inputs, np.random.randint(0,255,size=size, dtype=np.uint8).astype(np.float32), batch_size=batch_size, epochs=3)
 	w3 = a.get_weights()
 
 	# test model loading
 	a.load_weights(testfile)
 	w2 = a.get_weights()
 
-	assert (w2[0] == w1[0]).all(), "weightsloading issue"
-	assert (w3[0] == w2[0]).all(), "training weights updating issue"
+	if not (w2[0] == w1[0]).all():
+		print("weights loading issue")
+		custom_exit(testdir)
+
+	if (w3[0] == w1[0]).all():
+		print("training weights updating issue")
+		custom_exit(testdir)
+
+	print("Passed")
+	custom_exit(testdir)
+
+def custom_exit(files_to_remove=None):#roughly made exit to cleanup
+	import shutil
+	if files_to_remove:
+		shutil.rmtree(files_to_remove)
+	exit()
 
 if __name__ == '__main__':
 	main()
