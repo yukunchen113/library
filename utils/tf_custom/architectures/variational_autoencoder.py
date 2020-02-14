@@ -1,8 +1,8 @@
 import tensorflow as tf 
 from utils.tf_custom.loss import kl_divergence_with_normal
 from utils.other_library_tools.disentanglementlib_tools import gaussian_log_density, total_correlation 
-import encoders as enc 
-import decoders as dec
+from utils.tf_custom.architectures import encoders as enc 
+from utils.tf_custom.architectures import decoders as dec
 
 class VariationalAutoencoder(tf.keras.Model):
 	def __init__(self, name="variational_autoencoder", **kwargs):
