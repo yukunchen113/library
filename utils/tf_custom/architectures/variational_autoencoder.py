@@ -40,6 +40,8 @@ class BetaTCVAE(VariationalAutoencoder):
 		tc = (self.beta - 1) * total_correlation(sample, mean, logvar)
 		return tc + kl_loss
 
+
+
 def main():
 	import numpy as np
 	import os
