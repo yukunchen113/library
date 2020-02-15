@@ -207,7 +207,6 @@ class get_data():
 				self.cur_group_index+=1
 			else:
 				groups.append(self.groups_list.pop(idx % len(self.groups_list)))
-		print(groups)
 		self.load(groups)
 		self.last_group_list = groups
 		return self.images, self.labels
