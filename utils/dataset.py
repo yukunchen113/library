@@ -58,7 +58,25 @@ def get_mnist_data(datapath, shuffle=False):
 
 def get_celeba_data(datapath, save_new=False, get_group=True, group_num=1, shuffle=False, max_len_only=True, is_HD=256, **kwargs):
 	"""
-	This will retrieve the celeba dataset
+	This will retrieve the celeba/celeba-hq datasets. The hdf5, if availabe, should be in the form of:
+	- datapath/celeba-hq/celeba-64.hdf5
+	- datapath/celeba-hq/celeba-128.hdf5
+	- datapath/celeba-hq/celeba-256.hdf5
+	- datapath/celeba-hq/celeba-512.hdf5
+	- datapath/celeba-hq/celeba-1024.hdf5
+	- datapath/celeba/images.hdf5
+
+	If the hdf5 file is not available, the images must be stored as:
+	- datapath/celeba-hq/celeba-64/
+	- datapath/celeba-hq/celeba-128/
+	- datapath/celeba-hq/celeba-256/
+	- datapath/celeba-hq/celeba-512/
+	- datapath/celeba-hq/celeba-1024/
+	- datapath/celeba/images/
+	The labels must also be stored, especially the list_attr_celeba.txt file within
+	- datapath/celeba-hq/
+	- datapath/celeba/
+	
 
 	Examples:
 		>>> dataset, get_group = gu.get_celeba_data(gc.datapath, group_num=1)
@@ -73,7 +91,7 @@ def get_celeba_data(datapath, save_new=False, get_group=True, group_num=1, shuff
 		group_num:  The number of groups to load at once
 		shuffle:  Shuffles the groups, if loading with groups
 		max_len_only:  This will force the groups to be of max length.
-		is_HD: Whether to extract the hd version (int - 64,128,256,512,1024) or default version (False)
+		is_HD: Whether to extract the hd version (int - 64, 128, 256, 512, 1024) or default version (False)
 		**kwargs: These are any other irrelevant kwargs.
 
 	Returns:
@@ -95,7 +113,7 @@ def get_celeba_data(datapath, save_new=False, get_group=True, group_num=1, shuff
 	labels_path = os.path.join(datapath, labels_file)
 	images_path = os.path.join(datapath, images_path)
 
-	dataset = get_data(images_saved_path)
+	dataset = GetData(images_saved_path)
 	if not save_new:
 		ret = dataset.possible_load_group_indicies(images_saved_path, shuffle)
 		if ret:
@@ -142,7 +160,7 @@ def get_celeba_data(datapath, save_new=False, get_group=True, group_num=1, shuff
 	
 
 
-class get_data():
+class GetData():
 	#this will get the image data.
 	def __init__(self, save_path):
 		self.images = None
