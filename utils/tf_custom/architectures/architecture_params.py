@@ -24,5 +24,6 @@ hq512_layer_parameters = [
 		#[1024]
 		]
 
-default_activations = {"default":tf.nn.relu, -1:lambda x: x}
+default_decoder_activations = {"default":tf.nn.leaky_relu, -1:tf.math.sigmoid}
+default_encoder_activations = {"default":tf.nn.leaky_relu, -1:lambda x: x}
 

@@ -1,5 +1,6 @@
 import os
 import glob
+
 modules = glob.glob(os.path.join(os.path.dirname(__file__), "*"))
 modules = filter(lambda filename: (
 	os.path.isdir(filename) and not filename.endswith("__pycache__")) or (

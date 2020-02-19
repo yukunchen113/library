@@ -10,6 +10,7 @@ import pickle
 import random
 #import time
 #import lycon
+
 import h5py
 
 #utils packages
@@ -56,7 +57,7 @@ def get_mnist_data(datapath, shuffle=False):
 	ret = create_dataset_dict(*datasets)
 	return ret["data"], ret["labels"]
 
-def get_celeba_data(datapath, save_new=False, get_group=True, group_num=1, shuffle=False, max_len_only=True, is_HD=256, **kwargs):
+def get_celeba_data(datapath, save_new=False, get_group=True, group_num=1, shuffle=False, max_len_only=True, is_HD=256, group_size_if_save=3000,**kwargs):
 	"""
 	This will retrieve the celeba/celeba-hq datasets. The hdf5, if availabe, should be in the form of:
 	- datapath/celeba-hq/celeba-64.hdf5
@@ -115,7 +116,7 @@ def get_celeba_data(datapath, save_new=False, get_group=True, group_num=1, shuff
 
 	dataset = GetData(images_saved_path)
 	if not save_new:
-		ret = dataset.possible_load_group_indicies(images_saved_path, shuffle)
+		ret = dataset.possible_load_group_indices(images_saved_path, shuffle)
 		if ret:
 			save_new = True
 
@@ -144,11 +145,11 @@ def get_celeba_data(datapath, save_new=False, get_group=True, group_num=1, shuff
 			print("Skipped labels, ", incongruency_counter, "remaining: ", len(filenames))
 		labels = (np.asarray(labels).astype(int)+1)/2
 		
-		dataset.save_by_group(labels, filenames, 64)
+		dataset.save_by_group(labels, filenames, group_size_if_save)
 	
 	if get_group:
 		#returns dataset_object and the get next method
-		dataset.possible_load_group_indicies(shuffle, max_len_only)
+		dataset.possible_load_group_indices(shuffle, max_len_only)
 		return dataset, lambda group_num=group_num, random_selection=True, remove_past=False: dataset.get_next_group(
 								random_selection, group_num, remove_past)
 		 
@@ -157,7 +158,7 @@ def get_celeba_data(datapath, save_new=False, get_group=True, group_num=1, shuff
 
 	return dataset.images, dataset.labels
 
-	
+
 
 
 class GetData():
@@ -177,30 +178,47 @@ class GetData():
 			group_size = file["images"]["0"].shape[0]
 		return group_size
 
-	def load(self, group_indicies=None):
+	def load(self, group_indices=None):
 		"""
 		This will load the groups, given the indices
-		:param group_indicies: the indicies of the group to load
+		:param group_indices: the indicies of the group to load
 		:return: 0: success, -1: no path found
 		"""
 		if not os.path.exists(self.data_savepath):
-			print("Must call possible_load_group_indicies first!")
+			print("Must call possible_load_group_indices first!")
 			return -1
 		#load the data
 		total_images = None
 		total_labels = None
-		if group_indicies is None: 
-			group_indicies = self.groups_list
+		if group_indices is None: 
+			group_indices = self.groups_list
 
+		#timer = Timer()
 		with h5py.File(self.data_savepath, "r") as file:
-			for v in group_indicies:
+			for i,v in enumerate(group_indices, 0):
+				current_images = file["images"][v][()]
+				current_labels = file["labels"][v][()]
+				#""" This fills a premade array, this is faster than just concatenation
+				group_size = current_images.shape[0]
 				if total_images is None:
-					total_images = file["images"][v][()]
-					total_labels = file["labels"][v][()]
-				else:
-					total_images = np.concatenate((total_images, file["images"][v][()]),axis=0)
-					total_labels = np.concatenate((total_labels, file["labels"][v][()]),axis=0)
-		a = total_images[0]
+					total_images = np.empty((len(group_indices)*group_size, *current_images.shape[1:]), dtype=np.uint8)
+					total_labels = np.empty((len(group_indices)*group_size, *current_labels.shape[1:]))
+				#timer.print("Time to load values: ")
+				total_images[i*group_size:(i+1)*group_size] = current_images
+				total_labels[i*group_size:(i+1)*group_size] = current_labels
+				#"""
+				# below adds to list then vstacks, which is slightly slower than above after testing.
+				"""
+				if total_images is None:
+					total_images = []
+					total_labels = []
+				total_images.append(current_images)
+				total_labels.append(current_labels)
+				timer.print("TEST %d"%i)
+			total_images = np.vstack(total_images)
+			total_labels = np.vstack(total_labels)
+			timer.print("TEST")
+			#"""
 		self.images = total_images
 		self.labels = total_labels
 		return 0
@@ -229,10 +247,10 @@ class GetData():
 		self.last_group_list = groups
 		return self.images, self.labels
 
-	def possible_load_group_indicies(self, shuffle=True, max_len_only=False):
+	def possible_load_group_indices(self, shuffle=True, max_len_only=False):
 		"""
 		This is the possible indices that you can pick a group from.
-		:param shuffle: group_indicies the indicies of the group to load
+		:param shuffle: group_indices the indicies of the group to load
 		:param max_len_only: This will force the groups to be of max length.
 		:return: groups_list: possible groups to load, -1: no path found
 		"""
@@ -303,8 +321,9 @@ class GetData():
 	def save_by_group(self, labels, filenames, groups):
 		"""
 		loads in data by groups and saves them accordingly.
+
+		groups is the max amount of images per group
 		"""
-		import cv2
 		save_path = self.data_savepath
 		num_data = len(filenames)
 		num_groups = num_data//groups+int(bool(num_data%groups))
@@ -332,6 +351,7 @@ class GetData():
 				- list of the filenames for each of the images.
 		"""
 		#tf.enable_eager_execution()
+		import cv2
 		images = None
 		#filenames_list = np.asarray(filenames_list).reshape(-1,)
 		for i in range(len(filenames_list)):
@@ -339,6 +359,7 @@ class GetData():
 				print("\r"+loading_bar(i, len(filenames_list)), end="")
 			#image = lycon.load(filenames_list[i])
 			image = cv2.imread(filenames_list[i])
+			image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
 
 			#print("MIN, MAX", np.amin(image.numpy()), np.amax(image.numpy()))
 			if images is None:
@@ -350,3 +371,40 @@ class GetData():
 			print()
 		self.images = images
 		#tf.disable_eager_execution()
+
+class DatasetBatch():
+
+	"""This is a class that goes hand in hand with the GetData class
+	This will batch and reload groups accordingly
+	"""
+
+	def __init__(self, dataset, batch_size):
+		"""Initialize
+		
+		Args:
+		    dataset (function): This is a function, when called, will produce inputs and outputs.
+		    batch_size (int): This is the size we want to batch the data into
+		"""
+		self.batch_size = batch_size
+		self.dataset = dataset
+		self.i = 0 # current iteration on current dataset sample
+		self.inputs, self.outputs = self.dataset()
+
+	def get_next(self):
+		"""This selection method will sample from the batch
+			and get a new batch every dataset/batchsize 
+			returns batch_size
+		"""
+		dset_shape = self.inputs.shape[0]
+		max_iteration = dset_shape//self.batch_size
+		self.i+=1
+
+		indices_to_take = np.random.randint(dset_shape, size=(self.batch_size))
+
+		batched = (np.take(self.inputs, indices_to_take, axis=0), np.take(self.outputs, indices_to_take, axis=0))
+
+		if self.i >= max_iteration:
+			self.inputs, self.outputs = self.dataset()
+			self.i = 0
+
+		return batched

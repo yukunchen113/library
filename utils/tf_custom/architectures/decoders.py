@@ -17,7 +17,7 @@ class _Decoder(base.DeconvolutionalNeuralNetwork):
 		self.shape_input = shape_input
 		self.shape_before_flatten = shape_before_flatten
 		if activations is None:
-			activations = ap.default_activations
+			activations = ap.default_decoder_activations
 		super().__init__(*layer_params, activation=activations, shape_before_flatten=shape_before_flatten)
 	
 	def call(self, latent_elements):

@@ -17,12 +17,12 @@ class _GaussianEncoder(base.ConvolutionalNeuralNetwork):
 		self.shape_input = shape_input
 		self.num_latents = num_latents
 		if activations is None:
-			activations = ap.default_activations
+			activations = ap.default_encoder_activations
 		layer_params = layer_params + [[self.num_latents*2]]
 		super().__init__(*layer_params, activation=activations, shape_input=self.shape_input)
 	
 	def call(self,inputs):
-		assert list(inputs.shape[1:]) == self.shape_input
+		assert list(inputs.shape[1:]) == self.shape_input, "%s, %s"%(inputs.shape[1:], self.shape_input)
 		out = super().call(inputs)
 		mean = out[:,:self.num_latents]
 		logvar = out[:,self.num_latents:]
