@@ -29,6 +29,8 @@ class VariationalAutoencoder(tf.keras.Model):
 		self.encoder = enc.GaussianEncoder512(**kwargs)
 		self.decoder = dec.Decoder512(**kwargs)
 
+
+
 class BetaTCVAE(VariationalAutoencoder):
 	def __init__(self, beta, name="BetaTCVAE", **kwargs):
 		super().__init__(name=name, **kwargs)
@@ -37,6 +39,7 @@ class BetaTCVAE(VariationalAutoencoder):
 	def regularizer(self, sample, mean, logvar):
 		# regularization uses disentanglementlib method
 		kl_loss = kl_divergence_with_normal(mean, logvar)
+		kl_loss = tf.reduce_sum(kl_loss,1)
 		tc = (self.beta - 1) * total_correlation(sample, mean, logvar)
 		return tc + kl_loss
 

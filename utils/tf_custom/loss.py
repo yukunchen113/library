@@ -23,6 +23,7 @@ def cross_entropy(inputs, pred, epsilon=1e-7):
 			axis=1)
 	return loss
 
+
 @tf.function
 def kl_divergence_with_normal(mean, log_var):
 	"""
