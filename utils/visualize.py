@@ -1,5 +1,5 @@
 import numpy as np
-
+import tensorflow as tf
 class Traversal:
 	
 	def __init__(self, model, inputs):
