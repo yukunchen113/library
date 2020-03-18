@@ -28,6 +28,9 @@ class Timer():
 		self.start_time = time.time()
 		self.past_time = time.time()
 
+	def __call__(self, *args, **kwargs):
+		return self.print(*args, **kwargs)
+
 	def print(self, string="", return_string=False):
 		new_string = "%s Past Time: %f, Total Time: %f"%(string, 
 			time.time() - self.past_time, time.time() - self.start_time)
