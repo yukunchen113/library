@@ -9,7 +9,7 @@ class VariationalAutoencoder(tf.keras.Model):
 		# default model
 		super().__init__(name=name, **kwargs)
 		self.create_encoder_decoder_64(**kwargs)
-
+	
 	def call(self, inputs):
 		sample, mean, logvar = self.encoder(inputs)
 		reconstruction = self.decoder(sample)
@@ -29,6 +29,9 @@ class VariationalAutoencoder(tf.keras.Model):
 		self.encoder = enc.GaussianEncoder512(**kwargs)
 		self.decoder = dec.Decoder512(**kwargs)
 
+	@property
+	def num_latents(self):
+		return self.encoder.num_latents
 
 
 class BetaTCVAE(VariationalAutoencoder):

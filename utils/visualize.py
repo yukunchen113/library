@@ -34,7 +34,16 @@ class Traversal:
 		self.latent_rep_trav = None #latent traversal to become shape [num traversal, N, num latents]
 
 	def traverse_complete_latent_space(self, min_value=-3, max_value=3, num_steps=15):
-
+		"""Will travers all the latent space. 
+		The num images and num latents dimensions will be flattened to one dimension
+		shape of latents will be: [num images, num latents]
+		
+		Args:
+		    min_value (int): min value for traversal
+		    max_value (int): max value for traversal
+		    num_steps (int): The number of steps between min and max value
+		
+		"""
 		_, latent_rep, _ = self.model.encoder(self.inputs)
 		latent_reps = []
 		inputs = None
