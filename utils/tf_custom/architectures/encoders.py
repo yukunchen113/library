@@ -5,7 +5,7 @@ import tensorflow as tf
 from utils.tf_custom.architectures import architecture_params as ap
 
 class _GaussianEncoder(base.ConvolutionalNeuralNetwork):
-	def __init__(self, layer_params, num_latents, shape_input, activations=None):
+	def __init__(self, layer_params, num_latents, shape_input, activations=None, **kwargs):
 		"""Base clase for a gaussian encoder
 		
 		Args:

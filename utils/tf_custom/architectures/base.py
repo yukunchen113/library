@@ -6,15 +6,8 @@ See the prebuilt_models package for more full implementations of models.
 """
 import tensorflow as tf
 from functools import reduce
-import tensorflow.python.training.tracking.data_structures as td
-try:
-	#tensorflow 2.0
-	from tensorflow.python.training.tracking.data_structures import _DictWrapper as DictWrapper
-	from tensorflow.python.training.tracking.data_structures import ListWrapper as ListWrapper 
-except ImportError:
-	#tensorflow 1.14
-	from tensorflow.python.training.tracking.data_structures import _DictWrapper as DictWrapper
-	from tensorflow.python.training.tracking.data_structures import _ListWrapper as ListWrapper 
+from tensorflow.python.training.tracking.data_structures import _DictWrapper as DictWrapper
+from tensorflow.python.training.tracking.data_structures import ListWrapper as ListWrapper, NoDependency
 
 
 def _is_feed_forward(layer_param):
@@ -82,7 +75,6 @@ class _Network(tf.keras.layers.Layer):
 		"""
 		# layer properties
 		for layer in self._layer_params:
-			if type(layer) == ListWrapper: layer = list(layer)
 			#layer parameters must be defined in a list
 			assert type(layer) == list or type(
 				layer) == ListWrapper, "layer parameters must be defined in a list or tuple"
@@ -150,8 +142,7 @@ class ResnetBlock(_Network):
 		"""
 		check if a given list is for resnet_block, should not include upscale number
 		"""
-		if type(layer_param) == ListWrapper: layer_param = list(layer_param)
-		if not type(layer_param) == list or type(layer_param) == tuple: return False
+		if not (type(layer_param) == list or type(layer_param) == ListWrapper or type(layer_param) == tuple): return False
 		for i in layer_param:
 			if not _is_conv2d(i): return False
 		return True
@@ -216,15 +207,13 @@ class _ConvNetBase(_Network):
 
 	@staticmethod
 	def is_layers_valid(layer_params):
-		if type(layer_params) == ListWrapper: layer_params = list(layer_params)
-		if not type(layer_params) == list or type(layer_params) == tuple: return False
+		if not (type(layer_params) == list or type(layer_params) == ListWrapper or type(layer_params) == tuple): return False
 		for i in layer_params:
 			if not _ConvNetBase.is_which_layer(i): return False
 		return True
 
 	@staticmethod
 	def is_which_layer(layer_param, is_separate=True):
-		if type(layer_param) == ListWrapper: layer_param = list(layer_param)
 		if _is_feed_forward(layer_param):
 			return 1
 		else:
@@ -302,10 +291,9 @@ class ConvolutionalNeuralNetwork(_ConvNetBase):
 		self.shape_input=shape_input
 		self._create_model()
 
-	def _create_model(self):
-		self.layer_objects = []
-		
+	def _create_model(self):		
 		# add the Conv and ResNet layers
+		self.layer_objects = []
 		conv_layer = [tf.keras.layers.InputLayer(self.shape_input)]
 		for i in range(len(self.conv_layer_params)):
 			#setup parameters
@@ -319,9 +307,8 @@ class ConvolutionalNeuralNetwork(_ConvNetBase):
 				conv_layer.append(tf.keras.layers.AveragePooling2D(
 				up_param, padding="valid"))
 
-		conv_layer = tf.keras.Sequential(conv_layer, "convolutional_layers_block")
-		self.layer_objects.append(conv_layer)
-		self._shape_before_flatten = list(conv_layer.output_shape[1:])
+		# TBD: Get this shape without creating a Sequential model we won't use
+		self._shape_before_flatten = list(tf.keras.Sequential(conv_layer).output_shape[1:])
 
 		ff_layer = []
 		for i in range(len(self.ff_layer_params)):
@@ -335,14 +322,10 @@ class ConvolutionalNeuralNetwork(_ConvNetBase):
 			# get the ff layers 
 			ff_layer+=self.create_ff_layers(self.ff_layer_params[i], layer_num)
 			
-		ff_layer = tf.keras.Sequential(ff_layer, "feed_forward_layers_block")
-		self.layer_objects.append(ff_layer)
+		self.layer_objects= tf.keras.Sequential(conv_layer+ff_layer, "ConvolutionalNeuralNetwork_Block")
 
 	def call(self, inputs):
-		pred = inputs
-		pred = self.layer_objects[0](pred)
-		pred = self.layer_objects[1](pred)
-
+		pred = self.layer_objects(inputs)
 		return pred
 
 	@property
@@ -409,7 +392,7 @@ class DeconvolutionalNeuralNetwork(_ConvNetBase):
 		activations: This is the activation functions that will be performed on the network
 		*layer_params: convolutional layers specifications in order.
 	"""
-	def __init__(self, *layer_params, activation=None, shape_before_flatten=None):
+	def __init__(self, *layer_params, activation=None, shape_before_flatten=None, shape_input=None):
 		assert not activation is None, "activation must be defined" 
 		assert not shape_before_flatten is None, "shape_before_flatten must be defined" 
 		self.layer_objects_reshape = None
@@ -422,16 +405,15 @@ class DeconvolutionalNeuralNetwork(_ConvNetBase):
 			#if you want to automate the layers to rearrange themselves, make sure to 
 			#take care of the activations as well.
 		self.shape_before_flatten = shape_before_flatten
+		self.shape_input = shape_input
 		self._create_model()
 
 	def _create_model(self):
 		self.layer_objects = []
-		ff_layer = []
+		ff_layer = [tf.keras.layers.InputLayer(self.shape_input)]
 		# get the ff layers 
 		for i in range(len(self.ff_layer_params)):
 			ff_layer+=self.create_ff_layers(self.ff_layer_params[i], i)
-		ff_layer = tf.keras.Sequential(ff_layer, "feed_forward_layers_block")			
-		self.layer_objects.append(ff_layer)
 
 		# add the Conv and ResNet layers
 		conv_layer = []
@@ -455,14 +437,11 @@ class DeconvolutionalNeuralNetwork(_ConvNetBase):
 			conv_layer+=self.create_conv2d_layers(layer_p, layer_num, 
 				conv2d_obj=tf.keras.layers.Conv2DTranspose)
 
-		conv_layer = tf.keras.Sequential(conv_layer, "convolutional_layers_block")
-		self.layer_objects.append(conv_layer)
+		self.layer_objects = tf.keras.Sequential(ff_layer+conv_layer, "DeconvolutionalNeuralNetwork_Block")
 
 
 	def call(self, inputs):
-		pred = inputs
-		pred = self.layer_objects[0](pred)
-		pred = self.layer_objects[1](pred)
+		pred = self.layer_objects(inputs)
 		return pred
 
 def main():

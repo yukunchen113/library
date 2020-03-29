@@ -7,7 +7,7 @@ from utils.tf_custom.architectures import decoders as dec
 class VariationalAutoencoder(tf.keras.Model):
 	def __init__(self, name="variational_autoencoder", **kwargs):
 		# default model
-		super().__init__(name=name, **kwargs)
+		super().__init__(name=name)
 		self.create_encoder_decoder_64(**kwargs)
 	
 	def call(self, inputs):
@@ -48,16 +48,14 @@ class BetaTCVAE(VariationalAutoencoder):
 
 
 
-def main():
+def testall():
 	import numpy as np
 	import os
 	import shutil
 	batch_size = 8
-
 	size = [batch_size,64,64,3]
 	inputs = np.random.randint(0,255,size=size, dtype=np.uint8).astype(np.float32)
 	a = BetaTCVAE(2)
-
 	# test get reconstruction, only asserts shape
 	if not a(inputs).shape == tuple(size):
 		print("input shape is different from size, change spec")
@@ -72,7 +70,7 @@ def main():
 	testdir = "test"
 	if not os.path.exists(testdir):
 		os.mkdir(testdir)
-	testfile = os.path.join(testdir,"test.h5")
+	testfile = os.path.join(testdir, "test.h5")
 	w1 = a.get_weights()
 	a.save_weights(testfile)
 
@@ -96,13 +94,32 @@ def main():
 		custom_exit(testdir)
 
 	print("Passed")
+	#custom_exit(testdir)
+
+def testload():
+	import numpy as np
+	import os
+	import shutil
+	a = BetaTCVAE(2)
+	testdir = "test"
+	testfile = os.path.join(testdir, "test.h5")
+	a.load_weights(testfile)
+
+
 	custom_exit(testdir)
 
+
 def custom_exit(files_to_remove=None):#roughly made exit to cleanup
+	import numpy as np
+	import os
 	import shutil
-	if files_to_remove:
-		shutil.rmtree(files_to_remove)
-	exit()
+	batch_size = 8
+	size = [batch_size,64,64,3]
+	inputs = np.random.randint(0,255,size=size, dtype=np.uint8).astype(np.float32)
+	a = BetaTCVAE(2)
+
+
 
 if __name__ == '__main__':
-	main()
+	#testall()
+	testload()
