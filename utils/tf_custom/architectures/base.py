@@ -157,19 +157,18 @@ class _ConvNetBase(_Network):
 		layer_type = self.is_which_layer(layer_p, is_separate=False)
 		assert layer_type > 1, "%d, %s"%(layer_type, layer_p)
 		if layer_type == 2:
-			conv2d_layer.append(conv2d_obj(
-								*layer_p, 
+			layer = conv2d_obj(*layer_p, 
 								padding="same", 
-								activation=self._apply_activation(layer_num)))
+								activation=self._apply_activation(layer_num))
 		elif layer_type == 3:
-			conv2d_layer.append(ResnetBlock(
-								*layer_p,
+			layer = ResnetBlock(*layer_p,
 								activation=self._apply_activation(layer_num),
 								conv2d_obj=conv2d_obj
-								))
+								)
+
 		else:
 			raise Exception("Unknown layer type, %d"%layer_type)
-
+		conv2d_layer.append(layer)
 		return conv2d_layer
 
 	def create_ff_layers(self, layer_p, layer_num):
@@ -300,8 +299,8 @@ class ConvolutionalNeuralNetwork(_ConvNetBase):
 			layer_p, up_param = self.separate_upscale_or_pooling_parameter(self.conv_layer_params[i])
 
 			# get the convolution portion
+			#print(conv_layer[-1].get_config(), layer_p) #check configurations for debugging
 			conv_layer+=self.create_conv2d_layers(layer_p, i)
-
 			# get the average pooling portion
 			if not up_param is None:
 				conv_layer.append(tf.keras.layers.AveragePooling2D(

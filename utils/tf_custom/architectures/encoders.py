@@ -32,7 +32,7 @@ class _GaussianEncoder(base.ConvolutionalNeuralNetwork):
 
 class GaussianEncoder64(_GaussianEncoder):
 	shape_input = [64,64,3]
-	layer_params = ap.simple64_layer_parameters
+	layer_params = ap.simple64_layer_parameters[:]
 	def __init__(self, num_latents=10, activations=None, **kwargs):
 		"""This is a gaussian encoder that takes in 64x64x3 images
 		This is the architecture used in beta-VAE literature
@@ -46,7 +46,7 @@ class GaussianEncoder64(_GaussianEncoder):
 
 class GaussianEncoder512(_GaussianEncoder):
 	shape_input = [512,512,3]
-	layer_params = ap.hq512_layer_parameters
+	layer_params = ap.hq512_layer_parameters[:]
 	def __init__(self, num_latents=1024, activations=None, **kwargs):
 		"""This is a gaussian encoder that takes in 512x512x3 images
 		This is the architecture used in beta-VAE literature

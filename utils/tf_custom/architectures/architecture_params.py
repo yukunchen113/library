@@ -1,4 +1,5 @@
 import tensorflow as tf
+import copy
 
 simple64_shape_before_flatten = [4,4,32]
 simple64_layer_parameters = [
@@ -26,4 +27,6 @@ hq512_layer_parameters = [
 
 default_decoder_activations = {"default":tf.nn.leaky_relu, -1:tf.math.sigmoid}
 default_encoder_activations = {"default":tf.nn.leaky_relu, -1:lambda x: x}
+
+
 

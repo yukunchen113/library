@@ -3,7 +3,7 @@
 from utils.tf_custom.architectures import base
 import tensorflow as tf
 from utils.tf_custom.architectures import architecture_params as ap
-
+import copy
 class _Decoder(base.DeconvolutionalNeuralNetwork):
 	def __init__(self, layer_params, num_latents, shape_image, activations=None, shape_before_flatten=None, **kwargs):
 		"""Base class for decoders
@@ -27,7 +27,7 @@ class _Decoder(base.DeconvolutionalNeuralNetwork):
 
 class Decoder64(_Decoder):
 	shape_image = [64,64,3]
-	layer_params = ap.simple64_layer_parameters[::-1]
+	layer_params = copy.deepcopy(ap.simple64_layer_parameters)[::-1]
 	shape_before_flatten = ap.simple64_shape_before_flatten
 	def __init__(self, num_latents=10, activations=None, **kwargs):
 		"""Decoder network for 64x64x3 images
@@ -45,7 +45,7 @@ class Decoder64(_Decoder):
 
 class Decoder512(_Decoder):
 	shape_image = [512,512,3]
-	layer_params = ap.hq512_layer_parameters[::-1]
+	layer_params = copy.deepcopy(ap.hq512_layer_parameters)[::-1]
 	shape_before_flatten = ap.hq512_shape_before_flatten
 	def __init__(self, num_latents=1024, activations=None, **kwargs):
 		"""Decoder network for 512x512x3 images
@@ -72,5 +72,6 @@ def main():
 	decoder512(inputs)
 
 
+
 if __name__ == '__main__':
-	main()
+	save()

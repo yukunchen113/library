@@ -70,9 +70,13 @@ def testall():
 	testdir = "test"
 	if not os.path.exists(testdir):
 		os.mkdir(testdir)
-	testfile = os.path.join(testdir, "test.h5")
+	testfile1 = os.path.join(testdir, "test.h5")
+	testfile2 = os.path.join(testdir, "test2.h5")
 	w1 = a.get_weights()
-	a.save_weights(testfile)
+	a.save_weights(testfile1)
+
+
+
 
 	# test model training
 	#model = 
@@ -82,8 +86,12 @@ def testall():
 	w3 = a.get_weights()
 
 	# test model loading
-	a.load_weights(testfile)
+	a.load_weights(testfile1)
 	w2 = a.get_weights()
+
+	a.summary()
+
+	# test second model loading
 
 	if not (w2[0] == w1[0]).all():
 		print("weights loading issue")
@@ -93,6 +101,13 @@ def testall():
 		print("training weights updating issue")
 		custom_exit(testdir)
 
+
+	#tf.keras.backend.clear_session()
+	c = BetaTCVAE(2, name="test")
+	c.save_weights(testfile2)
+	a.summary()
+
+
 	print("Passed")
 	#custom_exit(testdir)
 
@@ -100,14 +115,23 @@ def testload():
 	import numpy as np
 	import os
 	import shutil
-	a = BetaTCVAE(2)
 	testdir = "test"
-	testfile = os.path.join(testdir, "test.h5")
+	testfile = os.path.join(testdir, "test2.h5")
+	a = BetaTCVAE(2)
 	a.load_weights(testfile)
 
-
+	"""
+	import h5py
+	f = h5py.File(testfile, "r")
+	keys = list(f.keys())
+	for i in keys:
+		print(i)
+		for k in f[i].keys():
+			print(f[i][k]["kernel:0"])
+		print()
+	exit()
 	custom_exit(testdir)
-
+	"""
 
 def custom_exit(files_to_remove=None):#roughly made exit to cleanup
 	import numpy as np
