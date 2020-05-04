@@ -378,12 +378,13 @@ class DatasetBatch():
 	This will batch and reload groups accordingly
 	"""
 
-	def __init__(self, dataset, batch_size):
+	def __init__(self, dataset, batch_size, prep_func=None):
 		"""Initialize
 		
 		Args:
 		    dataset (function): This is a function, when called, will produce inputs and outputs.
 		    batch_size (int): This is the size we want to batch the data into
+		    prep_func (function, optional): Additional preprocessing batch to be returned, this will be saved, and should be used for recurring, computationally heavy processing functions
 		"""
 		self.batch_size = batch_size
 		self.dataset = dataset
@@ -393,7 +394,7 @@ class DatasetBatch():
 	def get_next(self):
 		"""This selection method will sample from the batch
 			and get a new batch every dataset/batchsize 
-			returns batch_size
+			returns [batch_size]
 		"""
 		dset_shape = self.inputs.shape[0]
 		max_iteration = dset_shape//self.batch_size

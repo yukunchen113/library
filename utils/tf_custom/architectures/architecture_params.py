@@ -10,6 +10,19 @@ simple64_layer_parameters = [
 	[256],
 	[256]]
 
+
+hq256_shape_before_flatten = [8,8,128]
+hq256_layer_parameters = [
+		[16,5,1,2], 
+		[[32,1,1], [32,3,1], [32,3,1], 2],
+		[[64,1,1], [64,3,1], 2], 
+		[[128,1,1], [128,3,1], 2], 
+		[[128,3,1], [128,3,1], 2], 
+		[1024],
+		[512], # this is the number of latent elements
+		]
+
+
 hq512_shape_before_flatten = [8,8,256]
 hq512_layer_parameters = [
 		[16,5,1,2], 

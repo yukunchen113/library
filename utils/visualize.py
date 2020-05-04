@@ -99,7 +99,7 @@ class Traversal:
 		self.inputs = self.orig_inputs
 
 
-	def create_samples(self):
+	def create_samples(self, batch_size=32):
 		"""Creates the sample from the latent representation traversal
 		"""
 		assert not self.latent_rep_trav is None, "Please call traverse_latent_space first to get latent elements for self.latent_rep_trav"
@@ -108,8 +108,12 @@ class Traversal:
 		latent_rep = np.vstack(self.latent_rep_trav)
 
 		# get the samples
-		generated = self.model.decoder(latent_rep)
-
+		generated = None
+		for i in range(np.ceil(latent_rep.shape[0]/batch_size).astype(int)):
+			gen = self.model.decoder(latent_rep[i*batch_size:(i+1)*batch_size]).numpy()
+			if generated is None:
+				generated = np.empty((latent_rep.shape[0],*gen.shape[1:]))
+			generated[i*batch_size:(i+1)*batch_size] = gen
 		# reshape back to [num traversal, N, W, H, C], as per self.latent_rep_trav
 		self.samples = tf.reshape(generated, (*self.latent_rep_trav.shape[:2],*generated.shape[1:])).numpy()
 		
@@ -127,4 +131,5 @@ class Traversal:
 		real = np.concatenate(self.inputs,-3)
 
 		image = np.concatenate((real, samples),-2) #concatenate the real and reconstructed images
+		image = image[:,:,:3]
 		return image

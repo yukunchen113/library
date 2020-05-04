@@ -24,6 +24,11 @@ class VariationalAutoencoder(tf.keras.Model):
 		self.encoder = enc.GaussianEncoder64(**kwargs)
 		self.decoder = dec.Decoder64(**kwargs)
 
+	def create_encoder_decoder_256(self, **kwargs):
+		# default encoder decoder pair:
+		self.encoder = enc.GaussianEncoder256(**kwargs)
+		self.decoder = dec.Decoder256(**kwargs)
+
 	def create_encoder_decoder_512(self, **kwargs):
 		# default encoder decoder pair:
 		self.encoder = enc.GaussianEncoder512(**kwargs)
@@ -53,9 +58,11 @@ def testall():
 	import os
 	import shutil
 	batch_size = 8
-	size = [batch_size,64,64,3]
+	size = [batch_size,256,256,6]
 	inputs = np.random.randint(0,255,size=size, dtype=np.uint8).astype(np.float32)
-	a = BetaTCVAE(2)
+	a = BetaTCVAE(2, num_channels=6)
+	a.create_encoder_decoder_256(num_channels=6)
+
 	# test get reconstruction, only asserts shape
 	if not a(inputs).shape == tuple(size):
 		print("input shape is different from size, change spec")
@@ -117,10 +124,10 @@ def testload():
 	import shutil
 	testdir = "test"
 	testfile = os.path.join(testdir, "test2.h5")
-	a = BetaTCVAE(2)
+	a = BetaTCVAE(2, num_channels=6)
 	a.load_weights(testfile)
 
-	"""
+	#"""
 	import h5py
 	f = h5py.File(testfile, "r")
 	keys = list(f.keys())
@@ -130,20 +137,15 @@ def testload():
 			print(f[i][k]["kernel:0"])
 		print()
 	exit()
+	print("Passed!")
 	custom_exit(testdir)
-	"""
+	#"""
 
 def custom_exit(files_to_remove=None):#roughly made exit to cleanup
-	import numpy as np
-	import os
-	import shutil
-	batch_size = 8
-	size = [batch_size,64,64,3]
-	inputs = np.random.randint(0,255,size=size, dtype=np.uint8).astype(np.float32)
-	a = BetaTCVAE(2)
+	exit()
 
 
 
 if __name__ == '__main__':
-	#testall()
-	testload()
+	testall()
+	#testload()

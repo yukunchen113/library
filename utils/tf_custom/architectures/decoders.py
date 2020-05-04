@@ -14,6 +14,7 @@ class _Decoder(base.DeconvolutionalNeuralNetwork):
 			activations (dict): this is a dictionary of activations
 		    shape_before_flatten (None, list): shape of activations before flattening.
 		"""
+
 		self.shape_image = shape_image
 		self.shape_before_flatten = shape_before_flatten
 		if activations is None:
@@ -24,17 +25,20 @@ class _Decoder(base.DeconvolutionalNeuralNetwork):
 		out = super().call(latent_elements)
 		assert list(out.shape[1:]) == self.shape_image, "%s, %s"%(list(out.shape[1:]), self.shape_image)
 		return out
+		
 
 class Decoder64(_Decoder):
-	shape_image = [64,64,3]
-	layer_params = copy.deepcopy(ap.simple64_layer_parameters)[::-1]
-	shape_before_flatten = ap.simple64_shape_before_flatten
 	def __init__(self, num_latents=10, activations=None, **kwargs):
 		"""Decoder network for 64x64x3 images
 		
 		Args:
 		    activations (None, dict): This is a dictionary of specified actions
 		"""
+		self.shape_image = [64,64,3]
+		self.layer_params = copy.deepcopy(ap.simple64_layer_parameters)[::-1]
+		self.shape_before_flatten = ap.simple64_shape_before_flatten
+		if "num_channels" in kwargs:
+			self.shape_image[-1] = kwargs["num_channels"]
 		self.layer_params[-1][0] = self.shape_image[-1] # set num channels
 		super().__init__(self.layer_params, 
 			num_latents=num_latents, 
@@ -42,17 +46,37 @@ class Decoder64(_Decoder):
 			activations=activations, 
 			shape_before_flatten=self.shape_before_flatten)
 
+class Decoder256(_Decoder):
+	def __init__(self, num_latents=30, activations=None, **kwargs):
+		"""Decoder network for 512x512x3 images
+		
+		Args:
+		    activations (None, dict): This is a dictionary of specified actions
+		"""
+		self.shape_image = [256,256,3]
+		self.layer_params = copy.deepcopy(ap.hq256_layer_parameters)[::-1]
+		self.shape_before_flatten = ap.hq256_shape_before_flatten
+		if "num_channels" in kwargs:
+			self.shape_image[-1] = kwargs["num_channels"]
+		self.layer_params[-1][0] = self.shape_image[-1] # set num channels
+		super().__init__(self.layer_params, 
+			num_latents=num_latents, 
+			shape_image=self.shape_image, 
+			activations=activations, 
+			shape_before_flatten=self.shape_before_flatten)
 
 class Decoder512(_Decoder):
-	shape_image = [512,512,3]
-	layer_params = copy.deepcopy(ap.hq512_layer_parameters)[::-1]
-	shape_before_flatten = ap.hq512_shape_before_flatten
 	def __init__(self, num_latents=1024, activations=None, **kwargs):
 		"""Decoder network for 512x512x3 images
 		
 		Args:
 		    activations (None, dict): This is a dictionary of specified actions
 		"""
+		self.shape_image = [512,512,3]
+		self.layer_params = copy.deepcopy(ap.hq512_layer_parameters)[::-1]
+		self.shape_before_flatten = ap.hq512_shape_before_flatten
+		if "num_channels" in kwargs:
+			self.shape_image[-1] = kwargs["num_channels"]
 		self.layer_params[-1][0] = self.shape_image[-1] # set num channels
 		super().__init__(self.layer_params, 
 			num_latents=num_latents, 

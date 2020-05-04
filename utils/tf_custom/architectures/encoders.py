@@ -31,8 +31,6 @@ class _GaussianEncoder(base.ConvolutionalNeuralNetwork):
 		return sample, mean, logvar
 
 class GaussianEncoder64(_GaussianEncoder):
-	shape_input = [64,64,3]
-	layer_params = ap.simple64_layer_parameters[:]
 	def __init__(self, num_latents=10, activations=None, **kwargs):
 		"""This is a gaussian encoder that takes in 64x64x3 images
 		This is the architecture used in beta-VAE literature
@@ -41,12 +39,28 @@ class GaussianEncoder64(_GaussianEncoder):
 			num_latents (int): the number of latent elements
 			shape_input (list): the shape of the input image (not including batch size)
 		"""
+		self.shape_input = [64,64,3]
+		self.layer_params = ap.simple64_layer_parameters[:]
+		if "num_channels" in kwargs:
+			self.shape_input[-1] = kwargs["num_channels"]
 		super().__init__(self.layer_params, num_latents, self.shape_input, activations)
 
+class GaussianEncoder256(_GaussianEncoder):
+	def __init__(self, num_latents=30, activations=None, **kwargs):
+		"""This is a gaussian encoder that takes in 512x512x3 images
+		This is the architecture used in beta-VAE literature
+		
+		Args:
+			num_latents (int): the number of latent elements
+			shape_input (list): the shape of the input image (not including batch size)
+		"""
+		self.shape_input = [256,256,3]
+		self.layer_params = ap.hq256_layer_parameters[:]
+		if "num_channels" in kwargs:
+			self.shape_input[-1] = kwargs["num_channels"]
+		super().__init__(self.layer_params, num_latents, self.shape_input, activations)
 
 class GaussianEncoder512(_GaussianEncoder):
-	shape_input = [512,512,3]
-	layer_params = ap.hq512_layer_parameters[:]
 	def __init__(self, num_latents=1024, activations=None, **kwargs):
 		"""This is a gaussian encoder that takes in 512x512x3 images
 		This is the architecture used in beta-VAE literature
@@ -55,6 +69,10 @@ class GaussianEncoder512(_GaussianEncoder):
 			num_latents (int): the number of latent elements
 			shape_input (list): the shape of the input image (not including batch size)
 		"""
+		self.shape_input = [512,512,3]
+		self.layer_params = ap.hq512_layer_parameters[:]
+		if "num_channels" in kwargs:
+			self.shape_input[-1] = kwargs["num_channels"]
 		super().__init__(self.layer_params, num_latents, self.shape_input, activations)
 
 
