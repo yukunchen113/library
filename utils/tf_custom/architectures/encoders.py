@@ -19,6 +19,13 @@ class _GaussianEncoder(base.ConvolutionalNeuralNetwork):
 		if activations is None:
 			activations = ap.default_encoder_activations
 		layer_params = layer_params + [[self.num_latents*2]]
+
+		self._configuration_parameters = dict(
+					layer_params=layer_params, 
+					shape_input=self.shape_input,
+					num_latents=self.num_latents
+					)
+
 		super().__init__(*layer_params, activation=activations, shape_input=self.shape_input)
 	
 	def call(self,inputs):
@@ -29,6 +36,10 @@ class _GaussianEncoder(base.ConvolutionalNeuralNetwork):
 		sample = tf.exp(0.5*logvar)*tf.random.normal(
 			tf.shape(logvar))+mean
 		return sample, mean, logvar
+
+	def get_config(self):
+		return {**base.convert_wrapper(self._configuration_parameters), 
+				"activations":base.convert_wrapper(self._total_activations)} # activations are separately added 
 
 class GaussianEncoder64(_GaussianEncoder):
 	def __init__(self, num_latents=10, activations=None, **kwargs):

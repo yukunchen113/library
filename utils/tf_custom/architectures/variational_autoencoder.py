@@ -3,7 +3,6 @@ from utils.tf_custom.loss import kl_divergence_with_normal
 from utils.other_library_tools.disentanglementlib_tools import gaussian_log_density, total_correlation 
 from utils.tf_custom.architectures import encoders as enc 
 from utils.tf_custom.architectures import decoders as dec
-
 class VariationalAutoencoder(tf.keras.Model):
 	def __init__(self, name="variational_autoencoder", **kwargs):
 		# default model
@@ -33,6 +32,12 @@ class VariationalAutoencoder(tf.keras.Model):
 		# default encoder decoder pair:
 		self.encoder = enc.GaussianEncoder512(**kwargs)
 		self.decoder = dec.Decoder512(**kwargs)
+	
+	def get_config(self):
+		conf_params = {
+			"encoder":self.encoder.get_config(),
+			"decoder":self.decoder.get_config()}
+		return conf_params
 
 	@property
 	def num_latents(self):
@@ -50,7 +55,12 @@ class BetaTCVAE(VariationalAutoencoder):
 		kl_loss = tf.reduce_sum(kl_loss,1)
 		tc = (self.beta - 1) * total_correlation(sample, mean, logvar)
 		return tc + kl_loss
-
+	
+	def get_config(self):
+		config_param = {
+			**super().get_config(),
+			"beta":self.beta}
+		return config_param
 
 
 def testall():
@@ -60,7 +70,8 @@ def testall():
 	batch_size = 8
 	size = [batch_size,256,256,6]
 	inputs = np.random.randint(0,255,size=size, dtype=np.uint8).astype(np.float32)
-	a = BetaTCVAE(2, num_channels=6)
+	a = VariationalAutoencoder(num_channels=6)
+	#a = BetaTCVAE(2, num_channels=6)
 	a.create_encoder_decoder_256(num_channels=6)
 
 	# test get reconstruction, only asserts shape
@@ -81,8 +92,7 @@ def testall():
 	testfile2 = os.path.join(testdir, "test2.h5")
 	w1 = a.get_weights()
 	a.save_weights(testfile1)
-
-
+	print(a._updated_config())
 
 
 	# test model training

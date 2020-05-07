@@ -19,13 +19,24 @@ class _Decoder(base.DeconvolutionalNeuralNetwork):
 		self.shape_before_flatten = shape_before_flatten
 		if activations is None:
 			activations = ap.default_decoder_activations
+
+		self._configuration_parameters = dict(
+			layer_params=layer_params, 
+			shape_before_flatten=shape_before_flatten, 
+			shape_input=num_latents,
+			#activation=activations, 
+			)
+
 		super().__init__(*layer_params, activation=activations, shape_before_flatten=shape_before_flatten, shape_input=num_latents)
-	
+
 	def call(self, latent_elements):
 		out = super().call(latent_elements)
 		assert list(out.shape[1:]) == self.shape_image, "%s, %s"%(list(out.shape[1:]), self.shape_image)
 		return out
-		
+
+	def get_config(self):
+		return {**base.convert_wrapper(self._configuration_parameters), 
+				"activations":base.convert_wrapper(self._total_activations)} # activations are separately added 
 
 class Decoder64(_Decoder):
 	def __init__(self, num_latents=10, activations=None, **kwargs):

@@ -9,6 +9,19 @@ from functools import reduce
 from tensorflow.python.training.tracking.data_structures import _DictWrapper as DictWrapper
 from tensorflow.python.training.tracking.data_structures import ListWrapper as ListWrapper, NoDependency
 
+def convert_wrapper(x):
+	if type(x) == ListWrapper: 
+		x = list(x)
+		r = range(len(x))
+	elif type(x) == DictWrapper: 
+		x = dict(x)
+		r = x.keys()
+	else:
+		return x
+	for i in r:
+		if type(x[i]) == ListWrapper or type(x[i]) == DictWrapper:
+			x[i] = convert_wrapper(x[i]) 
+	return x
 
 def _is_feed_forward(layer_param):
 	"""
@@ -71,7 +84,7 @@ class _Network(tf.keras.layers.Layer):
 
 	def _get_properties(self):
 		"""
-		sets the properties of the layers.
+		performs a number of checks for validation.
 		"""
 		# layer properties
 		for layer in self._layer_params:
@@ -83,6 +96,7 @@ class _Network(tf.keras.layers.Layer):
 		#activation properties
 		if type(self._total_activations) == dict:
 			assert "default" in self._total_activations
+
 
 class ResnetBlock(_Network):
 	"""

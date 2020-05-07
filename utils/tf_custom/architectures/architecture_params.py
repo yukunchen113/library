@@ -14,7 +14,7 @@ simple64_layer_parameters = [
 hq256_shape_before_flatten = [8,8,128]
 hq256_layer_parameters = [
 		[16,5,1,2], 
-		[[32,1,1], [32,3,1], [32,3,1], 2],
+		[[32,1,1], [32,3,1], 2],
 		[[64,1,1], [64,3,1], 2], 
 		[[128,1,1], [128,3,1], 2], 
 		[[128,3,1], [128,3,1], 2], 
@@ -39,7 +39,7 @@ hq512_layer_parameters = [
 		]
 
 default_decoder_activations = {"default":tf.nn.leaky_relu, -1:tf.math.sigmoid}
-default_encoder_activations = {"default":tf.nn.leaky_relu, -1:lambda x: x}
+default_encoder_activations = {"default":tf.nn.leaky_relu, -1:tf.keras.activations.linear}
 
 
 
