@@ -8,19 +8,23 @@ import tensorflow as tf
 from functools import reduce
 from tensorflow.python.training.tracking.data_structures import _DictWrapper as DictWrapper
 from tensorflow.python.training.tracking.data_structures import ListWrapper as ListWrapper, NoDependency
+from types import FunctionType, LambdaType, MethodType
+from inspect import signature
 
-def convert_wrapper(x):
-	if type(x) == ListWrapper: 
+def convert_config(x):
+	if type(x) == ListWrapper or type(x) == list: 
 		x = list(x)
 		r = range(len(x))
-	elif type(x) == DictWrapper: 
+	elif type(x) == DictWrapper or type(x) == dict: 
 		x = dict(x)
 		r = x.keys()
 	else:
 		return x
 	for i in r:
 		if type(x[i]) == ListWrapper or type(x[i]) == DictWrapper:
-			x[i] = convert_wrapper(x[i]) 
+			x[i] = convert_config(x[i]) 
+		if isinstance(x[i], (FunctionType, LambdaType, MethodType)):
+			x[i] = "%s%s"%(x[i].__name__, str(signature(x[i])))
 	return x
 
 def _is_feed_forward(layer_param):

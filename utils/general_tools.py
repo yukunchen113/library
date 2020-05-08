@@ -39,7 +39,7 @@ class Timer():
 			return new_string
 		print(new_string)
 
-class standardized_paths():
+class StandardizedPaths():
 	"""
 	Class used for creating paths.
 	Can add descriptions to paths on what they are supposed to to.

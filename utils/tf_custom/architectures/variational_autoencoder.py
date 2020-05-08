@@ -92,8 +92,8 @@ def testall():
 	testfile2 = os.path.join(testdir, "test2.h5")
 	w1 = a.get_weights()
 	a.save_weights(testfile1)
+	from inspect import signature
 	print(a._updated_config())
-
 
 	# test model training
 	#model = 

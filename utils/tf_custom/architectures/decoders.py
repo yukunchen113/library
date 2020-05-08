@@ -35,8 +35,8 @@ class _Decoder(base.DeconvolutionalNeuralNetwork):
 		return out
 
 	def get_config(self):
-		return {**base.convert_wrapper(self._configuration_parameters), 
-				"activations":base.convert_wrapper(self._total_activations)} # activations are separately added 
+		return {**base.convert_config(self._configuration_parameters), 
+				"activations":base.convert_config(self._total_activations)} # activations are separately added 
 
 class Decoder64(_Decoder):
 	def __init__(self, num_latents=10, activations=None, **kwargs):
