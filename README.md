@@ -26,7 +26,7 @@ To add a dataset with pre-existing loading functionalities:
 1. define your datapath. See utils/general_constants.py, overwrite datapath.
 2. Format the datasets 
 	- celeba:
-		- make sure it is named _celeba_ in the your datapath and contains:
+		- make sure it is named _celeba_ in your datapath and contains:
 			- _images_
 			- _list_bbox_celeba.txt_
 			- _identity_CelebA.txt_
