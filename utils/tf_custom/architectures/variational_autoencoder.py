@@ -8,12 +8,20 @@ class VariationalAutoencoder(tf.keras.Model):
 		# default model
 		super().__init__(name=name)
 		self.create_encoder_decoder_64(**kwargs)
-	
+		
+		# dynamically changing
+		self.latest_sample = None
+		self.latest_mean = None
+		self.latest_logvar = None
+
 	def call(self, inputs):
-		sample, mean, logvar = self.encoder(inputs)
-		reconstruction = self.decoder(sample)
-		self.add_loss(self.regularizer(sample, mean, logvar))
+		self.latest_sample, self.latest_mean, self.latest_logvar = self.encoder(inputs)
+		reconstruction = self.decoder(self.latest_sample)
+		self.add_loss(self.regularizer(self.latest_sample, self.latest_mean, self.latest_logvar))
 		return reconstruction
+
+	def get_latent_space(self):
+		return self.latest_sample, self.latest_mean, self.latest_logvar
 
 	def regularizer(self, sample, mean, logvar):
 		return kl_divergence_with_normal(mean, logvar)
@@ -43,6 +51,9 @@ class VariationalAutoencoder(tf.keras.Model):
 	def num_latents(self):
 		return self.encoder.num_latents
 
+	@property
+	def shape_input(self):
+		return self.encoder.shape_input
 
 class BetaTCVAE(VariationalAutoencoder):
 	def __init__(self, beta, name="BetaTCVAE", **kwargs):

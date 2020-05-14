@@ -22,9 +22,33 @@ utils/ contains all the functions and classes that can be used
 - check out tf_custom for custom machine learning models and losses
 
 ### dataset.py
-loads in the dataset, also provides functionality for saving the data. 
+To add a dataset with pre-existing loading functionalities:
+1. define your datapath. See utils/general_constants.py, overwrite datapath.
+2. Format the datasets 
+	- celeba:
+		- make sure it is named _celeba_ in the your datapath and contains:
+			- _images_
+			- _list_bbox_celeba.txt_
+			- _identity_CelebA.txt_
+			- _list_landmarks_align_celeba.txt_
+			- _list_attr_celeba.txt_
+			- _list_landmarks_celeba.txt_
 
-For an example on how to use the current dataset see examples/
+	- celeba-HQ:
+		- make sure it is named celeba-hq in your datapath and contains:
+			- _celeba-1024_ (contains only 1024x1024 images)
+			- _celeba-512_ (contains only 512x512 images)
+			- _celeba-256_ (contains only 256x256 images)
+			- _celeba-128_ (contains only 128x128 images)
+			- _celeba-64_ (contains only 64x64 images)
+			- _list_bbox_celeba.txt_
+			- _list_landmarks_align_celeba.txt_
+			- _list_landmarks_celeba.txt_
+			- _identity_CelebA.txt_
+			- _list_attr_celeba.txt_
+3. to make these all into valid hdf5 datasets, run examples/dataset_test.py
+
+For an example on how to use the dataset see examples/dataset_test.py
 
 To add in a custom dataset:
 - put it into the datasets file. 
