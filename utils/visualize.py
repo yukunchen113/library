@@ -1,6 +1,10 @@
 import numpy as np
 import tensorflow as tf
-from utils.general_tools import Timer
+from utils.general_tools import Timer, loading_bar
+import cv2
+import os
+import imageio
+import shutil
 class Traversal:
 	
 	def __init__(self, model, inputs):
@@ -133,3 +137,60 @@ class Traversal:
 		image = np.concatenate((real, samples),-2) #concatenate the real and reconstructed images
 		image = image[:,:,:3]
 		return image
+	@property
+	def samples_list(self):
+		return [self.samples]
+
+	def save_gif(self, gif_path, latent_num=None):
+		"""Save traveral as a gif
+		
+		Args:
+		    gif_path (nparray): the destination of the gif. Must end with .gif
+		    latent_num (int, optional): the latent number to animate. If this is None, will animate entire latent space 
+		"""
+		# vertically stack all sample list
+		# include inputs
+		inputs = np.broadcast_to(self.inputs, self.samples_list[0].shape)
+		samples = np.concatenate([inputs]+self.samples_list, -3)
+
+		# horizontally stack images
+		samples = samples.transpose(1,0,2,3,4)
+		if latent_num is None:
+			samples = np.concatenate(samples, axis=-2)	
+		else:
+			samples = samples.reshape(-1, self.model.num_latents, *samples.shape[1:])
+			samples = np.concatenate(samples[:,latent_num], axis=-2)
+
+		create_gif(samples, gif_path)
+
+def create_gif(arr, gif_path):
+	"""Creates samples from a NHWC data array and saves it into gif_path.
+	arr must be a float between 0 and 1
+	
+	Args:
+	    arr (nparray): gif array
+	    gif_path (str): path to save gif (must end with .gif)
+	"""
+	base_dir = os.path.dirname(gif_path)
+	tmp_dir = os.path.join(base_dir,"tmp_gif")
+	if os.path.exists(tmp_dir):
+		# remove previous exising temp
+		shutil.rmtree(tmp_dir)
+	os.mkdir(tmp_dir)
+	frames_path = os.path.join(tmp_dir,"{i}.jpg")
+	arr = np.concatenate((arr, np.flip(arr, axis=0)), 0)
+
+
+	num_images = len(arr)
+	for i, x in enumerate(arr):
+		rgb_img = (x[:,:,:3]*255).astype(np.uint8)
+
+		cv2.imwrite(frames_path.format(i=i), cv2.cvtColor(rgb_img, cv2.COLOR_RGB2BGR), [int(cv2.IMWRITE_JPEG_QUALITY),100])
+		print("Creating Gif Frames: ", loading_bar(i+1, len(arr)), end="\r")
+	
+	with imageio.get_writer(gif_path, mode='I') as writer:
+		for i in range(num_images):
+			writer.append_data(imageio.imread(frames_path.format(i=i)))
+			print("Stitching Gif Frames: ", loading_bar(i+1, len(arr)), end="\r")
+	shutil.rmtree(tmp_dir)
+	print("\nCreated gif: %s"%gif_path)
