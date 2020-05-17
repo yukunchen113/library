@@ -171,8 +171,7 @@ def create_gif(arr, gif_path):
 	    arr (nparray): gif array
 	    gif_path (str): path to save gif (must end with .gif)
 	"""
-	base_dir = os.path.dirname(gif_path)
-	tmp_dir = os.path.join(base_dir,"tmp_gif")
+	tmp_dir = os.path.splitext(gif_path)[0]+"_tmp_gif"
 	if os.path.exists(tmp_dir):
 		# remove previous exising temp
 		shutil.rmtree(tmp_dir)
