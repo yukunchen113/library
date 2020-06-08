@@ -8,7 +8,8 @@ class VariationalAutoencoder(tf.keras.Model):
 		# default model
 		super().__init__(name=name)
 		self.create_encoder_decoder_64(**kwargs)
-		
+
+	def _setup(self):
 		# dynamically changing
 		self.latest_sample = None
 		self.latest_mean = None
@@ -28,18 +29,21 @@ class VariationalAutoencoder(tf.keras.Model):
 	
 	def create_encoder_decoder_64(self, **kwargs):
 		# default encoder decoder pair:
-		self.encoder = enc.GaussianEncoder64(**kwargs)
-		self.decoder = dec.Decoder64(**kwargs)
+		self._encoder = enc.GaussianEncoder64(**kwargs)
+		self._decoder = dec.Decoder64(**kwargs)
+		self._setup()
 
 	def create_encoder_decoder_256(self, **kwargs):
 		# default encoder decoder pair:
-		self.encoder = enc.GaussianEncoder256(**kwargs)
-		self.decoder = dec.Decoder256(**kwargs)
+		self._encoder = enc.GaussianEncoder256(**kwargs)
+		self._decoder = dec.Decoder256(**kwargs)
+		self._setup()
 
 	def create_encoder_decoder_512(self, **kwargs):
 		# default encoder decoder pair:
-		self.encoder = enc.GaussianEncoder512(**kwargs)
-		self.decoder = dec.Decoder512(**kwargs)
+		self._encoder = enc.GaussianEncoder512(**kwargs)
+		self._decoder = dec.Decoder512(**kwargs)
+		self._setup()
 	
 	def get_config(self):
 		conf_params = {
@@ -55,6 +59,15 @@ class VariationalAutoencoder(tf.keras.Model):
 	def shape_input(self):
 		return self.encoder.shape_input
 
+	@property
+	def encoder(self):
+		return self._encoder
+
+	@property
+	def decoder(self):
+		return self._decoder
+
+
 class BetaTCVAE(VariationalAutoencoder):
 	def __init__(self, beta, name="BetaTCVAE", **kwargs):
 		super().__init__(name=name, **kwargs)
@@ -66,6 +79,23 @@ class BetaTCVAE(VariationalAutoencoder):
 		kl_loss = tf.reduce_sum(kl_loss,1)
 		tc = (self.beta - 1) * total_correlation(sample, mean, logvar)
 		return tc + kl_loss
+	
+	def get_config(self):
+		config_param = {
+			**super().get_config(),
+			"beta":self.beta}
+		return config_param
+
+class BetaVAE(VariationalAutoencoder):
+	def __init__(self, beta, name="BetaVAE", **kwargs):
+		super().__init__(name=name, **kwargs)
+		self.beta = beta
+
+	def regularizer(self, sample, mean, logvar):
+		# regularization uses disentanglementlib method
+		kl_loss = self.beta*kl_divergence_with_normal(mean, logvar)
+		kl_loss = tf.reduce_sum(kl_loss,1)
+		return kl_loss
 	
 	def get_config(self):
 		config_param = {

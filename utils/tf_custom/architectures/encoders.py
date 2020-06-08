@@ -54,7 +54,7 @@ class GaussianEncoder64(_GaussianEncoder):
 		self.layer_params = ap.simple64_layer_parameters[:]
 		if "num_channels" in kwargs:
 			self.shape_input[-1] = kwargs["num_channels"]
-		super().__init__(self.layer_params, num_latents, self.shape_input, activations)
+		super().__init__(self.layer_params, num_latents, self.shape_input, activations, **kwargs)
 
 class GaussianEncoder256(_GaussianEncoder):
 	def __init__(self, num_latents=30, activations=None, **kwargs):
@@ -69,7 +69,7 @@ class GaussianEncoder256(_GaussianEncoder):
 		self.layer_params = ap.hq256_layer_parameters[:]
 		if "num_channels" in kwargs:
 			self.shape_input[-1] = kwargs["num_channels"]
-		super().__init__(self.layer_params, num_latents, self.shape_input, activations)
+		super().__init__(self.layer_params, num_latents, self.shape_input, activations, **kwargs)
 
 class GaussianEncoder512(_GaussianEncoder):
 	def __init__(self, num_latents=1024, activations=None, **kwargs):
@@ -84,7 +84,7 @@ class GaussianEncoder512(_GaussianEncoder):
 		self.layer_params = ap.hq512_layer_parameters[:]
 		if "num_channels" in kwargs:
 			self.shape_input[-1] = kwargs["num_channels"]
-		super().__init__(self.layer_params, num_latents, self.shape_input, activations)
+		super().__init__(self.layer_params, num_latents, self.shape_input, activations, **kwargs)
 
 
 def main():

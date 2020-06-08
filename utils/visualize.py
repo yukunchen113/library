@@ -37,7 +37,11 @@ class Traversal:
 		self.samples = None
 		self.latent_rep_trav = None #latent traversal to become shape [num traversal, N, num latents]
 
-	def traverse_complete_latent_space(self, min_value=-3, max_value=3, num_steps=15):
+	@property
+	def num_latents(self):
+		return self.model.num_latents
+
+	def traverse_complete_latent_space(self, min_value=-3, max_value=3, num_steps=30):
 		"""Will travers all the latent space. 
 		The num images and num latents dimensions will be flattened to one dimension
 		shape of latents will be: [num images, num latents]
@@ -48,18 +52,17 @@ class Traversal:
 		    num_steps (int): The number of steps between min and max value
 		
 		"""
-		_, latent_rep, _ = self.model.encoder(self.inputs)
 		latent_reps = []
 		inputs = None
 		
 		# accumulate images for all the different latent representations, for all images
-		for i in range(latent_rep.shape[1]):
+		for i in range(self.num_latents):
 			self.traverse_latent_space(latent_of_focus=i, 
 				min_value=min_value, max_value=max_value, num_steps=num_steps)
 			latent_reps.append(self.latent_rep_trav.copy())
 			
 			if inputs is None:
-				inputs = np.empty((latent_rep.shape[1], *self.inputs.shape))
+				inputs = np.empty((self.num_latents, *self.inputs.shape))
 			inputs[i] = self.inputs
 
 		# latents
@@ -72,8 +75,13 @@ class Traversal:
 		inputs = np.reshape(inputs, (-1, *inputs.shape[-3:]))
 		self.inputs = inputs
 
+	def encode(self, inputs):
+		return self.model.encoder(inputs)
 
-	def traverse_latent_space(self, latent_of_focus=3, min_value=0, max_value=3, num_steps=15):
+	def decode(self, samples):
+		return self.model.decoder(samples)
+
+	def traverse_latent_space(self, latent_of_focus=3, min_value=-3, max_value=3, num_steps=30):
 		"""traverses the latent space, focuses on one latent for each given image.
 		
 		Args:
@@ -85,7 +93,7 @@ class Traversal:
 		"""
 		t = Timer()
 		# initialize latent representation of images
-		_, latent_rep, latent_logvar = self.model.encoder(self.inputs)
+		_, latent_rep, latent_logvar = self.encode(self.inputs)
 		latent_rep = latent_rep.numpy()
 		stddev = np.sqrt(np.exp(latent_logvar.numpy()[:,latent_of_focus]))
 
@@ -103,7 +111,7 @@ class Traversal:
 		self.inputs = self.orig_inputs
 
 
-	def create_samples(self, batch_size=32):
+	def create_samples(self, batch_size=16):
 		"""Creates the sample from the latent representation traversal
 		"""
 		assert not self.latent_rep_trav is None, "Please call traverse_latent_space first to get latent elements for self.latent_rep_trav"
@@ -114,7 +122,7 @@ class Traversal:
 		# get the samples
 		generated = None
 		for i in range(np.ceil(latent_rep.shape[0]/batch_size).astype(int)):
-			gen = self.model.decoder(latent_rep[i*batch_size:(i+1)*batch_size]).numpy()
+			gen = self.decode(latent_rep[i*batch_size:(i+1)*batch_size]).numpy()
 			if generated is None:
 				generated = np.empty((latent_rep.shape[0],*gen.shape[1:]))
 			generated[i*batch_size:(i+1)*batch_size] = gen
@@ -158,7 +166,7 @@ class Traversal:
 		if latent_num is None:
 			samples = np.concatenate(samples, axis=-2)	
 		else:
-			samples = samples.reshape(-1, self.model.num_latents, *samples.shape[1:])
+			samples = samples.reshape(-1, self.num_latents, *samples.shape[1:])
 			samples = np.concatenate(samples[:,latent_num], axis=-2)
 
 		create_gif(samples, gif_path)

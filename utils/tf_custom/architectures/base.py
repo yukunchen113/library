@@ -27,7 +27,7 @@ def convert_config(x):
 			x[i] = "%s%s"%(x[i].__name__, str(signature(x[i])))
 	return x
 
-def _is_feed_forward(layer_param):
+def is_feed_forward(layer_param):
 	"""
 	check if a given list is feed forward.
 	"""
@@ -37,7 +37,7 @@ def _is_feed_forward(layer_param):
 	if not type(layer_param[0]) == int: return False
 	return True
 
-def _is_conv2d(layer_param):
+def is_conv2d(layer_param):
 	"""
 	check if a given list is for con2d, should not include upscale number
 	"""
@@ -162,7 +162,7 @@ class ResnetBlock(_Network):
 		"""
 		if not (type(layer_param) == list or type(layer_param) == ListWrapper or type(layer_param) == tuple): return False
 		for i in layer_param:
-			if not _is_conv2d(i): return False
+			if not is_conv2d(i): return False
 		return True
 
 class _ConvNetBase(_Network):
@@ -231,12 +231,12 @@ class _ConvNetBase(_Network):
 
 	@staticmethod
 	def is_which_layer(layer_param, is_separate=True):
-		if _is_feed_forward(layer_param):
+		if is_feed_forward(layer_param):
 			return 1
 		else:
 			if is_separate:
 				layer_param, _ = _ConvNetBase.separate_upscale_or_pooling_parameter(layer_param)
-			if  _is_conv2d(layer_param):
+			if  is_conv2d(layer_param):
 				return 2
 			elif ResnetBlock.is_layers_valid(layer_param):
 				return 3
@@ -300,7 +300,7 @@ class ConvolutionalNeuralNetwork(_ConvNetBase):
 		layer_params = list(layer_params)
 		assert self.is_layers_valid(layer_params), "parameters specified do not match requirements for object." 
 		self.conv_layer_params, self.ff_layer_params = self.separate_ff_and_conv(layer_params)
-		super().__init__(activation, *layer_params)
+		super().__init__(activation, *layer_params) # perform checks for to validate layer params, and set activations
 		assert list(self._layer_params) == self.conv_layer_params+self.ff_layer_params, "conv and resnet layers parameters must be first."
 			#make sure that the layers have been defined in order.
 			#if you want to automate the layers to rearrange themselves, make sure to 
@@ -415,7 +415,7 @@ class DeconvolutionalNeuralNetwork(_ConvNetBase):
 		self.layer_objects_reshape = None
 		layer_params = list(layer_params)
 		assert self.is_layers_valid(layer_params), "parameters specified do not match requirements for object." 
-		super().__init__(activation, *layer_params)
+		super().__init__(activation, *layer_params) # perform checks for to validate layer params, and set activations
 		self.conv_layer_params, self.ff_layer_params = self.separate_ff_and_conv(layer_params)
 		assert list(self._layer_params) == self.ff_layer_params + self.conv_layer_params, "conv and resnet layers parameters must be first."
 			#make sure that the layers have been defined in order.
@@ -428,6 +428,7 @@ class DeconvolutionalNeuralNetwork(_ConvNetBase):
 	def _create_model(self):
 		self.layer_objects = []
 		ff_layer = [tf.keras.layers.InputLayer(self.shape_input)]
+
 		# get the ff layers 
 		for i in range(len(self.ff_layer_params)):
 			ff_layer+=self.create_ff_layers(self.ff_layer_params[i], i)
@@ -442,8 +443,8 @@ class DeconvolutionalNeuralNetwork(_ConvNetBase):
 			
 			if not i:
 				prod_reshape = reduce(lambda x,y: x*y, self.shape_before_flatten)
-				conv_layer += [tf.keras.layers.Dense(prod_reshape),
-						tf.keras.layers.Reshape(self.shape_before_flatten)]
+				conv_layer += [tf.keras.Sequential([tf.keras.layers.Dense(prod_reshape),
+									tf.keras.layers.Reshape(self.shape_before_flatten)])]
 
 			# get the average pooling portion
 			if not up_param is None:

@@ -1,14 +1,14 @@
 import tensorflow as tf
 import copy
 
-simple64_shape_before_flatten = [4,4,32]
+simple64_shape_before_flatten = [4,4,64]
 simple64_layer_parameters = [
 	[32,4,2, None],
 	[32,4,2, None],
-	[32,4,2, None],
-	[32,4,2, None],
+	[64,4,2, None],
+	[64,4,2, None],
 	[256],
-	[256]]
+	]
 
 
 hq256_shape_before_flatten = [8,8,128]

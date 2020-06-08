@@ -19,7 +19,7 @@ class _Decoder(base.DeconvolutionalNeuralNetwork):
 		self.shape_before_flatten = shape_before_flatten
 		if activations is None:
 			activations = ap.default_decoder_activations
-
+	
 		self._configuration_parameters = dict(
 			layer_params=layer_params, 
 			shape_before_flatten=shape_before_flatten, 
@@ -28,6 +28,7 @@ class _Decoder(base.DeconvolutionalNeuralNetwork):
 			)
 
 		super().__init__(*layer_params, activation=activations, shape_before_flatten=shape_before_flatten, shape_input=num_latents)
+
 
 	def call(self, latent_elements):
 		out = super().call(latent_elements)
@@ -50,12 +51,19 @@ class Decoder64(_Decoder):
 		self.shape_before_flatten = ap.simple64_shape_before_flatten
 		if "num_channels" in kwargs:
 			self.shape_image[-1] = kwargs["num_channels"]
-		self.layer_params[-1][0] = self.shape_image[-1] # set num channels
+		out_layer = copy.deepcopy(self.layer_params[-1])
+		out_layer[0] = self.shape_image[-1] # set num channels
+
+		# add the image output layer
+		self.layer_params.append(out_layer)
+
+		# remove first conv spec
+		del self.layer_params[len([i for i in self.layer_params if base.is_feed_forward(i)])]
 		super().__init__(self.layer_params, 
 			num_latents=num_latents, 
 			shape_image=self.shape_image, 
 			activations=activations, 
-			shape_before_flatten=self.shape_before_flatten)
+			shape_before_flatten=self.shape_before_flatten, **kwargs)
 
 class Decoder256(_Decoder):
 	def __init__(self, num_latents=30, activations=None, **kwargs):
@@ -74,7 +82,7 @@ class Decoder256(_Decoder):
 			num_latents=num_latents, 
 			shape_image=self.shape_image, 
 			activations=activations, 
-			shape_before_flatten=self.shape_before_flatten)
+			shape_before_flatten=self.shape_before_flatten, **kwargs)
 
 class Decoder512(_Decoder):
 	def __init__(self, num_latents=1024, activations=None, **kwargs):
@@ -93,7 +101,7 @@ class Decoder512(_Decoder):
 			num_latents=num_latents, 
 			shape_image=self.shape_image, 
 			activations=activations, 
-			shape_before_flatten=self.shape_before_flatten)
+			shape_before_flatten=self.shape_before_flatten, **kwargs)
 
 
 def main():
