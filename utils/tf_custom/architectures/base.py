@@ -62,6 +62,7 @@ class _Network(tf.keras.layers.Layer):
 
 	"""
 	def __init__(self, activation, *layer_params):
+		assert not activation is None, "activation must be defined" 
 		super().__init__()
 		if type(activation) == dict:
 			activation = {str(k):v for k,v in activation.items()}
@@ -130,7 +131,6 @@ class ResnetBlock(_Network):
 		*layer_params: convolutional layers specifications in order.
 	"""
 	def __init__(self, *layer_params, activation=None, conv2d_obj=tf.keras.layers.Conv2D):
-		assert not activation is None, "activation must be defined" 
 		layer_params = list(layer_params)
 		assert self.is_layers_valid(layer_params), "parameters specified do not match requirements for object."
 		super().__init__(activation, *layer_params)

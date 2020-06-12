@@ -67,8 +67,11 @@ class Traversal:
 
 		# latents
 		latent_reps = np.asarray(latent_reps)
-		latent_reps = np.transpose(latent_reps, (2,0,1,3))
+		latent_reps = np.transpose(latent_reps, (2,0,1,3)) 
 		self.latent_rep_trav = latent_reps.reshape((-1, *latent_reps.shape[-2:])).transpose((1,0,2))
+		# self.latent_rep_trav is flattened from [num_images, num_latents]
+
+
 
 		# inputs duplication
 		inputs = np.transpose(inputs, (1,0,2,3,4))
@@ -128,7 +131,6 @@ class Traversal:
 			generated[i*batch_size:(i+1)*batch_size] = gen
 		# reshape back to [num traversal, N, W, H, C], as per self.latent_rep_trav
 		self.samples = tf.reshape(generated, (*self.latent_rep_trav.shape[:2],*generated.shape[1:])).numpy()
-		
 	
 	def construct_single_image(self):
 		"""Contruct a single image to be displayed from samples. samples should be of shape [num traversal, N, W, H, C]
@@ -147,7 +149,8 @@ class Traversal:
 		return image
 	@property
 	def samples_list(self):
-		return [self.samples]
+		inputs = np.broadcast_to(self.inputs, self.samples_list[0].shape)
+		return [inputs, self.samples]
 
 	def save_gif(self, gif_path, latent_num=None):
 		"""Save traveral as a gif
@@ -158,8 +161,8 @@ class Traversal:
 		"""
 		# vertically stack all sample list
 		# include inputs
-		inputs = np.broadcast_to(self.inputs, self.samples_list[0].shape)
-		samples = np.concatenate([inputs]+self.samples_list, -3)
+		
+		samples = np.concatenate(self.samples_list, -3)
 
 		# horizontally stack images
 		samples = samples.transpose(1,0,2,3,4)
