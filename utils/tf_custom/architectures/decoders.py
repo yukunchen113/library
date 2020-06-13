@@ -32,7 +32,7 @@ class _Decoder(base.DeconvolutionalNeuralNetwork):
 
 	def call(self, latent_elements):
 		out = super().call(latent_elements)
-		assert list(out.shape[1:]) == self.shape_image, "%s, %s"%(list(out.shape[1:]), self.shape_image)
+		assert list(out.shape[1:]) == list(self.shape_image), "%s, %s"%(list(out.shape[1:]), self.shape_image)
 		return out
 
 	def get_config(self):
