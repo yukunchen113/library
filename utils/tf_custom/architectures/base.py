@@ -148,12 +148,19 @@ class ResnetBlock(_Network):
 	def call(self, inputs):
 		initial_pred = inputs
 		pred = initial_pred # so we call pipeline this in the loop
-		for conv2d in self._conv2d_layers:
+		for i, conv2d in enumerate(self._conv2d_layers):
 			pred = conv2d(pred)
-			if self._is_skip_from_first_layer: #layers of size 1 will be used for matching dimensions, and the shortcut will start here.
+			if not i and self._is_skip_from_first_layer: #layers of size 1 will be used for matching dimensions, and the shortcut will start here.
 				initial_pred = pred
 		pred = pred + initial_pred
 		return pred
+
+	#def call(self, inputs):
+	#	pred = inputs
+	#	for conv2d in self._conv2d_layers:
+	#		pred = conv2d(pred)
+	#	return pred
+
 
 	@staticmethod
 	def is_layers_valid(layer_param):
