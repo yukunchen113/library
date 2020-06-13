@@ -144,16 +144,23 @@ class ResnetBlock(_Network):
 				padding="same", 
 				activation=self._apply_activation(i))
 			self._conv2d_layers.append(conv2d_layer)
-
+	"""
 	def call(self, inputs):
 		initial_pred = inputs
 		pred = initial_pred # so we call pipeline this in the loop
-		for conv2d in self._conv2d_layers:
+		for i,conv2d in enumerate(self._conv2d_layers):
 			pred = conv2d(pred)
-			if self._is_skip_from_first_layer: #layers of size 1 will be used for matching dimensions, and the shortcut will start here.
+			if (not i) and self._is_skip_from_first_layer: #layers of size 1 will be used for matching dimensions, and the shortcut will start here.
 				initial_pred = pred
 		pred = pred + initial_pred
 		return pred
+	"""
+	def call(self, inputs):
+		pred = inputs
+		for conv2d in self._conv2d_layers:
+			pred = conv2d(pred)
+		return pred
+
 
 	@staticmethod
 	def is_layers_valid(layer_param):
@@ -179,6 +186,11 @@ class _ConvNetBase(_Network):
 								padding="same", 
 								activation=self._apply_activation(layer_num))
 		elif layer_type == 3:
+			layer = tf.keras.Sequential([conv2d_obj(
+				*lparam, 
+				padding="same", 
+				activation=self._apply_activation(i)) for i,lparam in enumerate(layer_p)])
+
 			layer = ResnetBlock(*layer_p,
 								activation=self._apply_activation(layer_num),
 								conv2d_obj=conv2d_obj
@@ -311,7 +323,7 @@ class ConvolutionalNeuralNetwork(_ConvNetBase):
 	def _create_model(self):		
 		# add the Conv and ResNet layers
 		self.layer_objects = []
-		conv_layer = [tf.keras.layers.InputLayer(self.shape_input)]
+		conv_layer = []
 		for i in range(len(self.conv_layer_params)):
 			#setup parameters
 			layer_p, up_param = self.separate_upscale_or_pooling_parameter(self.conv_layer_params[i])
@@ -340,6 +352,8 @@ class ConvolutionalNeuralNetwork(_ConvNetBase):
 			ff_layer+=self.create_ff_layers(self.ff_layer_params[i], layer_num)
 			
 		self.layer_objects= tf.keras.Sequential(conv_layer+ff_layer, "ConvolutionalNeuralNetwork_Block")
+
+	def create_sequential
 
 	def call(self, inputs):
 		pred = self.layer_objects(inputs)

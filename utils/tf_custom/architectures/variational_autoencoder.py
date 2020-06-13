@@ -7,7 +7,7 @@ class VariationalAutoencoder(tf.keras.Model):
 	def __init__(self, name="variational_autoencoder", **kwargs):
 		# default model
 		super().__init__(name=name)
-		self.create_encoder_decoder_64(**kwargs)
+		self.create_default_encoder(**kwargs)
 
 	def _setup(self):
 		# dynamically changing
@@ -27,6 +27,9 @@ class VariationalAutoencoder(tf.keras.Model):
 	def regularizer(self, sample, mean, logvar):
 		return kl_divergence_with_normal(mean, logvar)
 	
+	def create_default_encoder(self, **kwargs):
+		self.create_encoder_decoder_64(**kwargs)
+
 	def create_encoder_decoder_64(self, **kwargs):
 		# default encoder decoder pair:
 		self._encoder = enc.GaussianEncoder64(**kwargs)
