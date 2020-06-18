@@ -4,7 +4,7 @@ from utils.tf_custom.architectures import base
 import tensorflow as tf
 from utils.tf_custom.architectures import architecture_params as ap
 
-class _GaussianEncoder(base.ConvolutionalNeuralNetwork):
+class GaussianEncoder(base.ConvolutionalNeuralNetwork):
 	def __init__(self, layer_params, num_latents, shape_input, activations=None, **kwargs):
 		"""Base clase for a gaussian encoder
 		
@@ -29,7 +29,7 @@ class _GaussianEncoder(base.ConvolutionalNeuralNetwork):
 		super().__init__(*layer_params, activation=activations, shape_input=self.shape_input)
 	
 	def call(self,inputs):
-		assert list(inputs.shape[1:]) == self.shape_input, "%s, %s"%(inputs.shape[1:], self.shape_input)
+		assert list(inputs.shape[1:]) == list(self.shape_input), "%s, %s"%(inputs.shape[1:], self.shape_input)
 		out = super().call(inputs)
 		mean = out[:,:self.num_latents]
 		logvar = out[:,self.num_latents:]
@@ -41,7 +41,7 @@ class _GaussianEncoder(base.ConvolutionalNeuralNetwork):
 		return {**base.convert_config(self._configuration_parameters), 
 				"activations":base.convert_config(self._total_activations)} # activations are separately added 
 
-class GaussianEncoder64(_GaussianEncoder):
+class GaussianEncoder64(GaussianEncoder):
 	def __init__(self, num_latents=10, activations=None, **kwargs):
 		"""This is a gaussian encoder that takes in 64x64x3 images
 		This is the architecture used in beta-VAE literature
@@ -56,7 +56,7 @@ class GaussianEncoder64(_GaussianEncoder):
 			self.shape_input[-1] = kwargs["num_channels"]
 		super().__init__(self.layer_params, num_latents, self.shape_input, activations, **kwargs)
 
-class GaussianEncoder256(_GaussianEncoder):
+class GaussianEncoder256(GaussianEncoder):
 	def __init__(self, num_latents=30, activations=None, **kwargs):
 		"""This is a gaussian encoder that takes in 512x512x3 images
 		This is the architecture used in beta-VAE literature
@@ -71,7 +71,7 @@ class GaussianEncoder256(_GaussianEncoder):
 			self.shape_input[-1] = kwargs["num_channels"]
 		super().__init__(self.layer_params, num_latents, self.shape_input, activations, **kwargs)
 
-class GaussianEncoder512(_GaussianEncoder):
+class GaussianEncoder512(GaussianEncoder):
 	def __init__(self, num_latents=1024, activations=None, **kwargs):
 		"""This is a gaussian encoder that takes in 512x512x3 images
 		This is the architecture used in beta-VAE literature
