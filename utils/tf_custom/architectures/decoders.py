@@ -4,7 +4,7 @@ from utils.tf_custom.architectures import base
 import tensorflow as tf
 from utils.tf_custom.architectures import architecture_params as ap
 import copy
-class _Decoder(base.DeconvolutionalNeuralNetwork):
+class Decoder(base.DeconvolutionalNeuralNetwork):
 	def __init__(self, layer_params, num_latents, shape_image, activations=None, shape_before_flatten=None, **kwargs):
 		"""Base class for decoders
 		
@@ -39,7 +39,7 @@ class _Decoder(base.DeconvolutionalNeuralNetwork):
 		return {**base.convert_config(self._configuration_parameters), 
 				"activations":base.convert_config(self._total_activations)} # activations are separately added 
 
-class Decoder64(_Decoder):
+class Decoder64(Decoder):
 	def __init__(self, num_latents=10, activations=None, **kwargs):
 		"""Decoder network for 64x64x3 images
 		
@@ -65,7 +65,7 @@ class Decoder64(_Decoder):
 			activations=activations, 
 			shape_before_flatten=self.shape_before_flatten, **kwargs)
 
-class Decoder256(_Decoder):
+class Decoder256(Decoder):
 	def __init__(self, num_latents=30, activations=None, **kwargs):
 		"""Decoder network for 512x512x3 images
 		
@@ -84,7 +84,7 @@ class Decoder256(_Decoder):
 			activations=activations, 
 			shape_before_flatten=self.shape_before_flatten, **kwargs)
 
-class Decoder512(_Decoder):
+class Decoder512(Decoder):
 	def __init__(self, num_latents=1024, activations=None, **kwargs):
 		"""Decoder network for 512x512x3 images
 		

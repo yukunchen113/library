@@ -102,8 +102,65 @@ class _Network(tf.keras.layers.Layer):
 		if type(self._total_activations) == dict:
 			assert "default" in self._total_activations
 
+class ConvBlock(_Network):
+	"""
+	Creates a convolutional block given the parameters. 
+	Convolutional layer specifications must be [depth, kernel, stride] 
 
-class ResnetBlock(_Network):
+	Activations must be a tensorflow activation function object, which will be the default 
+	activation for all of the layers, or a dict
+	with layer_number:tensorflow activation function. The dict must constain a "default"
+	key, which will be used as the default activation, if not otherwise specified.
+
+	Examples:
+		>>> import numpy as np
+		>>> inputs = np.random.normal(size=[32,64,64,3])
+		>>> activation = tf.nn.relu #{"default":tf.nn.relu, -1:tf.math.sigmoid}
+		>>> a = ConvBlock( 
+		>>> 	[32,1,1], # layer 1, for matching dimensions 
+		>>> 	[32,3,1], # layer 2
+		>>> 	[32,3,1], # layer 3
+		>>> 	activation = activation
+		>>> 	)
+		>>> a(inputs) # the model must be run for keras to collect the trainable variables/weights
+		>>> print(len(a.weights))
+
+	Args:
+		activation: This is the activation functions that will be performed on the network
+		*layer_params: convolutional layers specifications in order.
+	"""
+	def __init__(self, *layer_params, activation=None, conv2d_obj=tf.keras.layers.Conv2D):
+		layer_params = list(layer_params)
+		assert self.is_layers_valid(layer_params), "parameters specified do not match requirements for object."
+		super().__init__(activation, *layer_params)
+		# create the layers
+		self._conv2d_layers = []
+		for i in range(len(self._layer_params)):
+			params = self._layer_params[i]
+			conv2d_layer = conv2d_obj(
+				*params, 
+				padding="same", 
+				activation=self._apply_activation(i))
+			self._conv2d_layers.append(conv2d_layer)
+
+	def call(self, inputs):
+		pred = inputs
+		for conv2d in self._conv2d_layers:
+			pred = conv2d(pred)
+		return pred
+
+	@classmethod
+	def is_layers_valid(cls, layer_param):
+		"""
+		check if a given list is for resnet_block, should not include upscale number
+		"""
+		if not (type(layer_param) == list or type(layer_param) == ListWrapper or type(layer_param) == tuple): return False
+		for i in layer_param:
+			if not is_conv2d(i): return False
+		return True
+
+
+class ResnetBlock(ConvBlock):
 	"""
 	Creates a convolutional resnet block given the parameters. 
 	Convolutional layer specifications must be [depth, kernel, stride] 
@@ -131,19 +188,8 @@ class ResnetBlock(_Network):
 		*layer_params: convolutional layers specifications in order.
 	"""
 	def __init__(self, *layer_params, activation=None, conv2d_obj=tf.keras.layers.Conv2D):
-		layer_params = list(layer_params)
-		assert self.is_layers_valid(layer_params), "parameters specified do not match requirements for object."
-		super().__init__(activation, *layer_params)
+		super().__init__(*layer_params, activation=activation, conv2d_obj=conv2d_obj)
 		self._is_skip_from_first_layer = self._layer_params[0][1] == 1
-		# create the layers
-		self._conv2d_layers = []
-		for i in range(len(self._layer_params)):
-			params = self._layer_params[i]
-			conv2d_layer = conv2d_obj(
-				*params, 
-				padding="same", 
-				activation=self._apply_activation(i))
-			self._conv2d_layers.append(conv2d_layer)
 
 	def call(self, inputs):
 		initial_pred = inputs
@@ -155,66 +201,78 @@ class ResnetBlock(_Network):
 		pred = pred + initial_pred
 		return pred
 
-	#def call(self, inputs):
-	#	pred = inputs
-	#	for conv2d in self._conv2d_layers:
-	#		pred = conv2d(pred)
-	#	return pred
-
-
-	@staticmethod
-	def is_layers_valid(layer_param):
-		"""
-		check if a given list is for resnet_block, should not include upscale number
-		"""
-		if not (type(layer_param) == list or type(layer_param) == ListWrapper or type(layer_param) == tuple): return False
-		for i in layer_param:
-			if not is_conv2d(i): return False
-		return True
-
-class _ConvNetBase(_Network):
+class ConvNetBase(_Network):
 	"""
 	Base class for CNNs. Accepts 3 types of layers: ResNet, Conv2D/Conv2DTranspose,
 	and Dense. These layers will be checked for in the is_which_layer below.
+
+	layer_types that are negative or 1 will be treated as ff. (1 is preset, you will need to define other values)
+	layer_types that are >=2 are treated as conv layers. (2,3 is preset, you will need to define other values)
+
+
+	Example:
+		>>> class Example(ConvNetBase):
+		>>> 	def create_conv2d_layers(self, layer_p, layer_num, conv2d_obj=tf.keras.layers.Conv2D):
+		>>> 		# extra parameters that need to be filtered. here, will filter strings as we use  "resnet" as a parameter
+		>>> 		layer_type = self.is_which_layer(layer_p, is_separate=False)
+		>>> 		layer_p = [i for i in layer_p if not type(i)==str]
+		>>> 		layer = super().create_conv2d_layers(layer_p=layer_p, layer_num=layer_num, conv2d_obj=conv2d_obj)
+
+		>>> 		# define new type of layer
+		>>> 		if layer_type == 4:
+		>>> 			layer = base.ConvBlock(*layer_p,
+		>>> 								activation=self._apply_activation(layer_num),
+		>>> 								conv2d_obj=conv2d_obj
+		>>> 								)
+		>>> 		return layer
+
+		>>> 	@staticmethod
+		>>> 	def is_which_layer(layer_param, is_separate=True):
+		>>> 		num = base.ConvNetBase.is_which_layer(layer_param, is_separate)
+		>>> 		if not num == 1:
+		>>> 			if is_separate:
+		>>> 				layer_param, _ = ProVLAEDecoder64.separate_upscale_or_pooling_parameter(layer_param)
+		>>> 			# overwrite resnet
+		>>> 			if "resnet" in layer_param and base.ResnetBlock.is_layers_valid([i for i in layer_param if not i=="resnet"]):
+		>>> 				num = 3
+		>>> 			# add conv block as default
+		>>> 			if base.ConvBlock.is_layers_valid(layer_param):
+		>>> 				num = 4
+		>>> 		return num
 	"""
 	def create_conv2d_layers(self, layer_p, layer_num, conv2d_obj=tf.keras.layers.Conv2D):
-		conv2d_layer = [] # local layer items
 		layer_type = self.is_which_layer(layer_p, is_separate=False)
-		assert layer_type > 1, "%d, %s"%(layer_type, layer_p)
+		assert layer_type, "%d, %s"%(layer_type, layer_p)
+		layer = None
 		if layer_type == 2:
 			layer = conv2d_obj(*layer_p, 
 								padding="same", 
 								activation=self._apply_activation(layer_num))
-		elif layer_type == 3:
+		if layer_type == 3:
 			layer = ResnetBlock(*layer_p,
 								activation=self._apply_activation(layer_num),
 								conv2d_obj=conv2d_obj
 								)
-
-		else:
-			raise Exception("Unknown layer type, %d"%layer_type)
-		conv2d_layer.append(layer)
-		return conv2d_layer
+		return layer
 
 	def create_ff_layers(self, layer_p, layer_num):
-		ff_layer = [] # local layer items
 		layer_type = self.is_which_layer(layer_p)
 		assert layer_type == 1
-		ff_layer.append(tf.keras.layers.Dense(
+		ff_layer = tf.keras.layers.Dense(
 			*layer_p,
-			activation=self._apply_activation(layer_num)))
+			activation=self._apply_activation(layer_num))
 		return ff_layer
 
-	@staticmethod
-	def separate_ff_and_conv(layer_params):
+	@classmethod
+	def separate_ff_and_conv(cls, layer_params):
 		ff_layer_params = []
 		conv_layer_params = []
 		for layer_p in layer_params:
-			layer_type = _ConvNetBase.is_which_layer(layer_p)
+			layer_type = cls.is_which_layer(layer_p)
 			assert layer_type
 			if layer_type == 1:
 				ff_layer_params.append(layer_p)
-			elif layer_type == 2 or layer_type == 3:
+			elif layer_type >= 2:
 				conv_layer_params.append(layer_p)
 			else:
 				raise Exception("Unknown seperation value")
@@ -229,27 +287,30 @@ class _ConvNetBase(_Network):
 		"""
 		return layer_params[:-1], layer_params[-1]
 
-	@staticmethod
-	def is_layers_valid(layer_params):
-		if not (type(layer_params) == list or type(layer_params) == ListWrapper or type(layer_params) == tuple): return False
+	@classmethod
+	def is_layers_valid(cls, layer_params):
+		if not (type(layer_params) == list or type(layer_params) == ListWrapper or type(layer_params) == tuple): 
+			return False
 		for i in layer_params:
-			if not _ConvNetBase.is_which_layer(i): return False
+			if not cls.is_which_layer(i): 
+				return False
 		return True
 
-	@staticmethod
-	def is_which_layer(layer_param, is_separate=True):
+	@classmethod
+	def is_which_layer(cls, layer_param, is_separate=True):
+		num = 0
 		if is_feed_forward(layer_param):
-			return 1
+			num = 1
 		else:
 			if is_separate:
-				layer_param, _ = _ConvNetBase.separate_upscale_or_pooling_parameter(layer_param)
-			if  is_conv2d(layer_param):
-				return 2
+				layer_param, _ = cls.separate_upscale_or_pooling_parameter(layer_param)
+			if is_conv2d(layer_param):
+				num = 2
 			elif ResnetBlock.is_layers_valid(layer_param):
-				return 3
-		return 0
+				num = 3
+		return num
 
-class ConvolutionalNeuralNetwork(_ConvNetBase):
+class ConvolutionalNeuralNetwork(ConvNetBase):
 	"""
 	This is a convolutional neural network class, used to build 
 	CNNs, can be used as an encoder in a VAE, or a discriminator in a GAN
@@ -318,21 +379,19 @@ class ConvolutionalNeuralNetwork(_ConvNetBase):
 	def _create_model(self):		
 		# add the Conv and ResNet layers
 		self.layer_objects = []
-		conv_layer = [tf.keras.layers.InputLayer(self.shape_input)]
+		conv_layer = []
 		for i in range(len(self.conv_layer_params)):
 			#setup parameters
 			layer_p, up_param = self.separate_upscale_or_pooling_parameter(self.conv_layer_params[i])
 
 			# get the convolution portion
 			#print(conv_layer[-1].get_config(), layer_p) #check configurations for debugging
-			conv_layer+=self.create_conv2d_layers(layer_p, i)
+			conv_layer.append(self.create_conv2d_layers(layer_p, i))
 			# get the average pooling portion
 			if not up_param is None:
 				conv_layer.append(tf.keras.layers.AveragePooling2D(
 				up_param, padding="valid"))
 
-		# TBD: Get this shape without creating a Sequential model we won't use
-		self._shape_before_flatten = list(tf.keras.Sequential(conv_layer).output_shape[1:])
 
 		ff_layer = []
 		for i in range(len(self.ff_layer_params)):
@@ -344,9 +403,14 @@ class ConvolutionalNeuralNetwork(_ConvNetBase):
 				ff_layer.append(tf.keras.layers.Flatten())
 			
 			# get the ff layers 
-			ff_layer+=self.create_ff_layers(self.ff_layer_params[i], layer_num)
-			
-		self.layer_objects= tf.keras.Sequential(conv_layer+ff_layer, "ConvolutionalNeuralNetwork_Block")
+			ff_layer.append(self.create_ff_layers(self.ff_layer_params[i], layer_num))
+		self.layer_objects = [conv_layer, ff_layer]
+		self.build_sequential()
+
+	def build_sequential(self):
+		input_layer = [tf.keras.layers.InputLayer(self.shape_input)]
+		self._shape_before_flatten = list(tf.keras.Sequential(input_layer+self.layer_objects[0]).output_shape[1:])
+		self.layer_objects= tf.keras.Sequential(input_layer+self.layer_objects[0]+self.layer_objects[1], "ConvolutionalNeuralNetwork_Block")
 
 	def call(self, inputs):
 		pred = self.layer_objects(inputs)
@@ -354,10 +418,11 @@ class ConvolutionalNeuralNetwork(_ConvNetBase):
 
 	@property
 	def shape_before_flatten(self):
-		assert not self._shape_before_flatten is None
+		if self._shape_before_flatten is None:
+			return None
 		return list(self._shape_before_flatten)
 
-class DeconvolutionalNeuralNetwork(_ConvNetBase):
+class DeconvolutionalNeuralNetwork(ConvNetBase):
 	"""
 	This is a deconvolutional neural network class, used to build 
 	CNNs, can be used as an decoder in a VAE, or a discriminator in a GAN
@@ -434,11 +499,11 @@ class DeconvolutionalNeuralNetwork(_ConvNetBase):
 
 	def _create_model(self):
 		self.layer_objects = []
-		ff_layer = [tf.keras.layers.InputLayer(self.shape_input)]
+		ff_layer = []
 
 		# get the ff layers 
 		for i in range(len(self.ff_layer_params)):
-			ff_layer+=self.create_ff_layers(self.ff_layer_params[i], i)
+			ff_layer.append(self.create_ff_layers(self.ff_layer_params[i], i))
 
 		# add the Conv and ResNet layers
 		conv_layer = []
@@ -459,11 +524,15 @@ class DeconvolutionalNeuralNetwork(_ConvNetBase):
 				up_param, interpolation="nearest"))
 
 			# get the convolution portion
-			conv_layer+=self.create_conv2d_layers(layer_p, layer_num, 
-				conv2d_obj=tf.keras.layers.Conv2DTranspose)
+			conv_layer.append(self.create_conv2d_layers(layer_p, layer_num, 
+							conv2d_obj=tf.keras.layers.Conv2DTranspose))
 
-		self.layer_objects = tf.keras.Sequential(ff_layer+conv_layer, "DeconvolutionalNeuralNetwork_Block")
+		self.layer_objects=[ff_layer, conv_layer]
+		self.build_sequential()
 
+	def build_sequential(self):
+		input_layer = [tf.keras.layers.InputLayer(self.shape_input)]
+		self.layer_objects= tf.keras.Sequential(input_layer+self.layer_objects[0]+self.layer_objects[1], "DeconvolutionalNeuralNetwork_Block")
 
 	def call(self, inputs):
 		pred = self.layer_objects(inputs)
