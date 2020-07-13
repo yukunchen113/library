@@ -36,7 +36,8 @@ def kl_divergence_with_normal(mean, log_var):
 		>>> b = np.random.normal(3,4,5)
 		>>> res1 = kl_divergence_with_normal(a,b).numpy()
 	"""
-	return 0.5*(tf.math.exp(log_var)+tf.math.square(mean)-1-log_var)
+	var = tf.math.exp(log_var)
+	return 0.5*(var+tf.math.square(mean)-1-log_var)
 
 
 @tf.function

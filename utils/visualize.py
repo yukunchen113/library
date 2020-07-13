@@ -84,7 +84,7 @@ class Traversal:
 	def decode(self, samples):
 		return self.model.decoder(samples)
 
-	def traverse_latent_space(self, latent_of_focus=3, min_value=-3, max_value=3, num_steps=30):
+	def traverse_latent_space(self, latent_of_focus=3, min_value=-3, max_value=3, num_steps=30, add_min_max=False):
 		"""traverses the latent space, focuses on one latent for each given image.
 		
 		Args:
@@ -106,7 +106,10 @@ class Traversal:
 			mod_latent_rep = latent_rep.copy()
 			addition = np.zeros(mod_latent_rep.shape)
 			addition[:,latent_of_focus] = i
-			mod_latent_rep=latent_rep+addition
+			mod_latent_rep=latent_rep
+			if not add_min_max:
+				mod_latent_rep[:,latent_of_focus]=0
+			mod_latent_rep+=addition
 			latent_rep_trav.append(mod_latent_rep.copy())
 
 

@@ -7,9 +7,9 @@ class VariationalAutoencoder(tf.keras.Model):
 	def __init__(self, name="variational_autoencoder", **kwargs):
 		# default model
 		super().__init__(name=name)
-		self.create_default_encoder(**kwargs)
+		self.create_default_vae(**kwargs)
 
-	def create_default_encoder(self, **kwargs):
+	def create_default_vae(self, **kwargs):
 		self.create_encoder_decoder_64(**kwargs)
 
 	def _setup(self):

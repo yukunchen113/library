@@ -33,6 +33,7 @@ def is_feed_forward(layer_param):
 	"""
 	if type(layer_param) == ListWrapper: layer_param = list(layer_param)
 	if not type(layer_param) == list or type(layer_param) == tuple: return False
+	layer_param = [i for i in layer_param if not type(i) == str] # remove string options for layer validation
 	if not len(layer_param) == 1: return False
 	if not type(layer_param[0]) == int: return False
 	return True
@@ -43,6 +44,7 @@ def is_conv2d(layer_param):
 	"""
 	if type(layer_param) == ListWrapper: layer_param = list(layer_param)
 	if not type(layer_param) == list or type(layer_param) == tuple: return False
+	layer_param = [i for i in layer_param if not type(i) == str] # remove string options for layer validation
 	if not len(layer_param) == 3: return False
 	for i in range(len(layer_param)):
 		if not type(layer_param[0]) == int: return False
@@ -129,10 +131,15 @@ class ConvBlock(_Network):
 		activation: This is the activation functions that will be performed on the network
 		*layer_params: convolutional layers specifications in order.
 	"""
-	def __init__(self, *layer_params, activation=None, conv2d_obj=tf.keras.layers.Conv2D):
+	def __init__(self, *layer_params, activation=None, conv2d_obj=None):
+		# initialize options
 		layer_params = list(layer_params)
 		assert self.is_layers_valid(layer_params), "parameters specified do not match requirements for object."
 		super().__init__(activation, *layer_params)
+		self.build_layer_types()
+		if conv2d_obj is None:
+			conv2d_obj = self.conv2d_obj
+
 		# create the layers
 		self._conv2d_layers = []
 		for i in range(len(self._layer_params)):
@@ -142,6 +149,9 @@ class ConvBlock(_Network):
 				padding="same", 
 				activation=self._apply_activation(i))
 			self._conv2d_layers.append(conv2d_layer)
+
+	def build_layer_types(self):
+		self.conv2d_obj = tf.keras.layers.Conv2D
 
 	def call(self, inputs):
 		pred = inputs
@@ -155,7 +165,9 @@ class ConvBlock(_Network):
 		check if a given list is for resnet_block, should not include upscale number
 		"""
 		if not (type(layer_param) == list or type(layer_param) == ListWrapper or type(layer_param) == tuple): return False
+		print(layer_param)
 		for i in layer_param:
+			print(i)
 			if not is_conv2d(i): return False
 		return True
 
@@ -187,15 +199,15 @@ class ResnetBlock(ConvBlock):
 		activation: This is the activation functions that will be performed on the network
 		*layer_params: convolutional layers specifications in order.
 	"""
-	def __init__(self, *layer_params, activation=None, conv2d_obj=tf.keras.layers.Conv2D):
+	def __init__(self, *layer_params, activation=None, conv2d_obj=None):
 		super().__init__(*layer_params, activation=activation, conv2d_obj=conv2d_obj)
 		self._is_skip_from_first_layer = self._layer_params[0][1] == 1
 
 	def call(self, inputs):
 		initial_pred = inputs
 		pred = initial_pred # so we call pipeline this in the loop
-		for i, conv2d in enumerate(self._conv2d_layers):
-			pred = conv2d(pred)
+		for i, layer in enumerate(self._conv2d_layers):
+			pred = layer(pred)
 			if not i and self._is_skip_from_first_layer: #layers of size 1 will be used for matching dimensions, and the shortcut will start here.
 				initial_pred = pred
 		pred = pred + initial_pred
@@ -240,9 +252,23 @@ class ConvNetBase(_Network):
 		>>> 				num = 4
 		>>> 		return num
 	"""
-	def create_conv2d_layers(self, layer_p, layer_num, conv2d_obj=tf.keras.layers.Conv2D):
+
+	def __init__(self, *ar, **kw):
+		super().__init__(*ar, **kw)
+		self.build_layer_types()
+
+	def build_layer_types(self):
+		self.conv2d_obj = tf.keras.layers.Conv2D
+		self.ff_obj = tf.keras.layers.Dense
+
+	def create_conv2d_layers(self, layer_p, layer_num, conv2d_obj=None):
+		# initialize parameters
 		layer_type = self.is_which_layer(layer_p, is_separate=False)
 		assert layer_type, "%d, %s"%(layer_type, layer_p)
+		if conv2d_obj is None:
+			conv2d_obj = self.conv2d_obj
+
+		# create layers
 		layer = None
 		if layer_type == 2:
 			layer = conv2d_obj(*layer_p, 
@@ -255,10 +281,15 @@ class ConvNetBase(_Network):
 								)
 		return layer
 
-	def create_ff_layers(self, layer_p, layer_num):
+	def create_ff_layers(self, layer_p, layer_num, ff_obj=None):
+		# initialize parameters
 		layer_type = self.is_which_layer(layer_p)
+		if ff_obj is None:
+			ff_obj = self.ff_obj
+
+		# build layer
 		assert layer_type == 1
-		ff_layer = tf.keras.layers.Dense(
+		ff_layer = ff_obj(
 			*layer_p,
 			activation=self._apply_activation(layer_num))
 		return ff_layer
@@ -298,6 +329,7 @@ class ConvNetBase(_Network):
 
 	@classmethod
 	def is_which_layer(cls, layer_param, is_separate=True):
+		layer_param = [i for i in layer_param if not type(i) == str] # remove string options for layer validation
 		num = 0
 		if is_feed_forward(layer_param):
 			num = 1
@@ -496,6 +528,11 @@ class DeconvolutionalNeuralNetwork(ConvNetBase):
 		self.shape_before_flatten = shape_before_flatten
 		self.shape_input = shape_input
 		self._create_model()
+	
+	def build_layer_types(self):
+		# overwrite the default functions
+		self.conv2d_obj = tf.keras.layers.Conv2DTranspose
+		self.ff_obj = tf.keras.layers.Dense
 
 	def _create_model(self):
 		self.layer_objects = []
@@ -524,8 +561,7 @@ class DeconvolutionalNeuralNetwork(ConvNetBase):
 				up_param, interpolation="nearest"))
 
 			# get the convolution portion
-			conv_layer.append(self.create_conv2d_layers(layer_p, layer_num, 
-							conv2d_obj=tf.keras.layers.Conv2DTranspose))
+			conv_layer.append(self.create_conv2d_layers(layer_p, layer_num))
 
 		self.layer_objects=[ff_layer, conv_layer]
 		self.build_sequential()

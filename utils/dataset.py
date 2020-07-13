@@ -16,7 +16,9 @@ import h5py
 #utils packages
 from utils.general_tools import * # need the from if importing this file
 
-#get the dataset
+########################
+# Get Various Datasets #
+########################
 def get_mnist_data(datapath, shuffle=False):
 	"""
 	Args:
@@ -100,13 +102,20 @@ def get_celeba_data(datapath, save_new=False, get_group=True, group_num=1, shuff
 	"""
 	#loads from numpy file, if available or specified, else save to numpy file
 	#should make these paths into constants in a python file at the directory, or in general constants
+	
+	##############################
+	# Choose CelebA or CelebA-HQ #
+	##############################
 	if is_HD:
 		datapath = os.path.join(datapath, "celeba-hq")
 		images_path = "celeba-%d"%is_HD
 	else:
 		datapath = os.path.join(datapath, "celeba")
 		images_path = "images"
-
+	
+	###############################################################################################
+	# Getting the paths and files for raw data (incase needs to recreated dataset) and saved data #
+	###############################################################################################
 	labels_file = "list_attr_celeba.txt"
 	images_saved_file = "%s.hdf5"%images_path
 	
@@ -114,12 +123,18 @@ def get_celeba_data(datapath, save_new=False, get_group=True, group_num=1, shuff
 	labels_path = os.path.join(datapath, labels_file)
 	images_path = os.path.join(datapath, images_path)
 
+	#########################################################
+	# Initialize Dataset Object and Set Save New Parameters #
+	#########################################################
 	dataset = GetData(images_saved_path)
 	if not save_new:
 		ret = dataset.possible_load_group_indices(images_saved_path, shuffle)
 		if ret:
 			save_new = True
 
+	######################
+	# Save a New Dataset #
+	######################
 	if save_new:
 		if os.path.exists(images_saved_path):
 			os.remove(images_saved_path)
@@ -147,19 +162,35 @@ def get_celeba_data(datapath, save_new=False, get_group=True, group_num=1, shuff
 		
 		dataset.save_by_group(labels, filenames, group_size_if_save)
 	
+	########################
+	# Get Dataset Iterator #
+	########################
 	if get_group:
 		#returns dataset_object and the get next method
 		dataset.possible_load_group_indices(shuffle, max_len_only)
-		return dataset, lambda group_num=group_num, random_selection=True, remove_past=False: dataset.get_next_group(
-								random_selection, group_num, remove_past)
-		 
+		return dataset, _Dataset(dataset=dataset, group_num=group_num)
+	
+	##############################
+	# Directly load the new data #
+	##############################
 	else:
 		dataset.load()
 
 	return dataset.images, dataset.labels
 
+#def get_shapes3d_data(datapath, save_new=False, get_group=True, group_num=1, shuffle=False, max_len_only=True, is_HD=256, group_size_if_save=3000,**kwargs):
 
 
+###################
+# Dataset Objects #
+###################
+class _Dataset():
+	def __init__(self, dataset, group_num=1, random_selection=True, remove_past=False):
+		self.dataset = lambda group_num=group_num, random_selection=random_selection, remove_past=remove_past: dataset.get_next_group(
+			group_num=group_num, random_selection=random_selection, remove_past_groups=remove_past)
+
+	def __call__(self, group_num=1, random_selection=True, remove_past=False):
+		return self.dataset(group_num=group_num, random_selection=random_selection, remove_past=remove_past)
 
 class GetData():
 	#this will get the image data.
@@ -223,6 +254,11 @@ class GetData():
 		self.labels = total_labels
 		return 0
 
+	def batch(self, batch_size, group_num=1, random_selection=True, remove_past=False):
+		dataset_call = lambda group_num=group_num, random_selection=random_selection, remove_past=remove_past: self.get_next_group(
+			group_num=group_num, random_selection=random_selection, remove_past_groups=remove_past)
+		return DatasetBatch(dataset_call, batch_size)
+
 	def get_next_group(self, random_selection=True, group_num=1, remove_past_groups=False):
 		"""
 		This function is an iterator, will iterate through the groups in an hdf5 file.
@@ -272,7 +308,7 @@ class GetData():
 		return 0
 
 
-	def save_file(self, groups=64, dataset_offset=0):
+	def save_file(self, groups=1000, dataset_offset=0):
 		"""
 		loads images from a saved path and sets it as self.images
 		Current assumptions:
@@ -409,3 +445,13 @@ class DatasetBatch():
 			self.i = 0
 
 		return batched
+
+	def __call__(self):
+		return self.get_next()
+
+	def __iter__(self):
+		return self
+
+	def __next__(self):
+		return self.__call__()
+
