@@ -4,7 +4,7 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 import tensorflow as tf
 import numpy as np
 import utils as ut
-import utils.tf_custom.architecturesv2 as arc
+import utils.tf_custom.architectures as arc
 def cprint(string):
 	print('\033[94m'+string+'\033[0m')
 def wprint(string):
