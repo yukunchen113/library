@@ -13,10 +13,25 @@ def convert_dict_key_to_string(d):
 	return new_d
 
 
+def apply_activation(layer_num, activation, num_layers):
+	"""
+	gets the correct activation for a given layer number. Starts at layer 0 to n-1
+	"""
+	if type(activation) == dict or type(activation) == DictWrapper:
+		if str(layer_num) in activation:
+			activation = activation[str(layer_num)]
+		elif str(layer_num - num_layers) in activation:
+			activation = activation[str(layer_num - num_layers)]
+		else:
+			activation = activation["default"]
+	else:
+		activation = activation
+	return activation
+
 class NetworkBlock(tf.keras.layers.Layer, base.ValidateParameters):
 	"""provides basic check for network and activation
 	"""
-	def __init__(self, *layer_param, activation=None):
+	def __init__(self, *layer_param, activation=None, **kw):
 		super().__init__()
 		assert not activation is None, "activation must be specified"
 		if type(activation) == dict: # we need to convert the key to a string as tf backend doesn't accept int keys
@@ -54,25 +69,34 @@ class NetworkBlock(tf.keras.layers.Layer, base.ValidateParameters):
 		available_layers_types = []
 		return available_layers_types
 
+
 	def apply_activation(self, layer_num):
 		"""
 		gets the correct activation for a given layer number. Starts at layer 0 to n-1
 		"""
-		activation = self.activation
-		if type(activation) == dict or type(activation) == DictWrapper:
-			if str(layer_num) in activation:
-				activation = activation[str(layer_num)]
-			elif str(layer_num - self.num_layers) in activation:
-				activation = activation[str(layer_num - self.num_layers)]
-			else:
-				activation = activation["default"]
-		else:
-			activation = activation
-		return activation
+		return apply_activation(
+			layer_num=layer_num,
+			activation=self.activation,
+			num_layers=self.num_layers)
 
 	@classmethod
 	def _check(cls, layer_param, is_check_verbose=False, **kw):
 		assert type(is_check_verbose) == bool
+		# layer_param can not be empty
+		if not layer_param:
+			if is_check_verbose: print("layer_param is empty.")
+			return False
+
+		# since layer_param[i] has to be loaded in using *layer_param[i], we have to make sure all of the elements in layer_param are lists
+		for lp in layer_param:
+			if not (type(lp) == ListWrapper or type(lp) == tuple or type(lp) == list):
+				if is_check_verbose: print("all of the elements in layer_param have to be convertable to lists, eg. tuple, list, ListWrapper")
+				return False
+
+		# checks valid layer type
+		layer_types = cls.get_layer_type(layer_param=layer_param, is_check_verbose=is_check_verbose)
+		if not layer_types: return False
+		
 		# check activation if activation are specified
 		if "activation" in kw:
 			activation = kw["activation"]
@@ -89,20 +113,18 @@ class NetworkBlock(tf.keras.layers.Layer, base.ValidateParameters):
 					type(activation))
 				return False
 
-		# layer_param can not be empty
-		if not layer_param:
-			if is_check_verbose: print("layer_param is empty.")
-			return False
-
-		# since layer_param[i] has to be loaded in using *layer_param[i], we have to make sure all of the elements in layer_param are lists
-		for lp in layer_param:
-			if not (type(lp) == ListWrapper or type(lp) == tuple or type(lp) == list):
-				if is_check_verbose: print("all of the elements in layer_param have to be convertable to lists, eg. tuple, list, ListWrapper")
-				return False
-
-		# checks valid layer type
-		if not cls.get_layer_type(layer_param=layer_param, is_check_verbose=is_check_verbose): return False
-
+			# only NetworkBlock can have dict type activations
+			available_lt = cls.get_available_layer_types()
+			for i,lt in enumerate(layer_types):
+				if inspect.isclass(available_lt[lt]):
+					ancestors = [par for par in inspect.getmro(available_lt[lt])]
+				else:
+					ancestors = [par for par in inspect.getmro(available_lt[lt].__class__)]
+				lt_activation = apply_activation(layer_num=i, activation=activation, num_layers=len(layer_param))
+				if (not NetworkBlock in ancestors) and (type(lt_activation) == dict or type(lt_activation) == DictWrapper):
+					if is_check_verbose: print("only NetworkBlock can have dict type activations but %s activation is used for %s which has ancestors %s"%(
+						dict(lt_activation), available_lt[lt], ancestors))
+					return False
 		return True
 
 	@classmethod
@@ -117,7 +139,7 @@ class NetworkBlock(tf.keras.layers.Layer, base.ValidateParameters):
 					correct_layer_type.append(i)
 			if not len(correct_layer_type) == 1: 
 				if is_check_verbose: print("\nThere must be one matching LayerObj but there is %d available layers for layer parameter \"%s\". Available layers:"%(len(
-					correct_layer_type), layer), *[LayerObjs[i].__class__.__name__ for i in correct_layer_type] or ["None"],"\n\tPlease specify additional_check for handling of this layer type\n")
+					correct_layer_type), layer), *[LayerObjs[i] for i in correct_layer_type] or ["None"],"\n\tPlease specify additional_check for handling of this layer type\n")
 				return False # conflicting or nonexistent layer type
 			layer_types.append(correct_layer_type[0])
 		return layer_types
@@ -163,7 +185,6 @@ class ConvBlock(NetworkBlock):
 		conv2d_obj.default_kw = dict(padding="same") # add default keyword arguments, (default_kw only works with BaseTFWrapper instances)
 		return [conv2d_obj]
 
-
 class ResnetBlock(ConvBlock):
 	"""
 	Creates a convolutional resnet block given the parameters. 
@@ -178,9 +199,6 @@ class ResnetBlock(ConvBlock):
 		activation: This is the activation functions that will be performed on the network
 		*layer_params: convolutional layers specifications in order.
 	"""
-	def __init__(self, *ar, **kw):
-		super().__init__(*ar, **kw)
-
 	def call(self, inputs):
 		pred = inputs
 		for i, layer in enumerate(self.layers):
@@ -211,7 +229,11 @@ def create_option_block(base_obj, *ar):
 	# other than base_obj, all others must inhereit OptionWrapper
 	# ar must be additional options
 	for ar_obj in ar:
-		assert base.OptionWrapper.__name__ in [i.__name__ for i in inspect.getmro(ar_obj.__class__)], "other than base_obj, all others must inhereit OptionWrapper"
+		if inspect.isclass(ar_obj):
+			ancestors = [par for par in inspect.getmro(ar_obj)]
+		else:
+			ancestors = [par for par in inspect.getmro(ar_obj.__class__)]
+		assert base.OptionWrapper in ancestors, "other than base_obj, all others must inhereit OptionWrapper"
 
 	class OptionNetworkBlock(NetworkBlock):
 		@classmethod
@@ -238,3 +260,6 @@ def create_option_block(base_obj, *ar):
 			return True
 
 	return OptionNetworkBlock
+
+
+	

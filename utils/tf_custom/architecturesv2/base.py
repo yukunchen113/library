@@ -7,10 +7,27 @@ import tensorflow as tf
 from tensorflow.python.training.tracking.data_structures import _DictWrapper as DictWrapper
 from tensorflow.python.training.tracking.data_structures import ListWrapper as ListWrapper, NoDependency
 from functools import wraps
+from types import FunctionType, LambdaType, MethodType
 import inspect
-############################
-# Main Validation Wrappers #
-############################
+##################
+# Base Utilities #
+##################
+def convert_config(x):
+	if type(x) == ListWrapper or type(x) == list: 
+		x = list(x)
+		r = range(len(x))
+	elif type(x) == DictWrapper or type(x) == dict: 
+		x = dict(x)
+		r = x.keys()
+	elif isinstance(x, (FunctionType, LambdaType, MethodType)):
+		return "%s%s"%(x.__name__, str(inspect.signature(x)))
+	else:
+		return x
+
+	for i in r:
+		x[i] = convert_config(x[i]) 
+	return x
+
 class hybridmethod(object):
 	# this code is a method that handles self and cls, code is from: https://stackoverflow.com/questions/18078744/python-hybrid-between-regular-method-and-classmethod
 	def __init__(self, func):

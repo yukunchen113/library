@@ -1,29 +1,36 @@
-class GaussianEncoder(base.ConvolutionalNeuralNetwork):
-	def __init__(self, layer_params, num_latents, shape_input, activations=None, **kwargs):
+import tensorflow as tf
+from . import architecture_params as ap
+from . import base
+from . import network
+class GaussianEncoder(network.ConvolutionalNeuralNetwork):
+	def __init__(self, layer_params, num_latents, shape_input, activation, **kwargs):
 		"""Base clase for a gaussian encoder
 		
 		Args:
-			layer_params (list): layer size specs
-			num_latents (int): the number of latent elements
-			shape_input (list): the shape of the input image (not including batch size)
-			activations (dict): this is a dictionary of activations
+		    layer_params (list): layer size specs
+		    num_latents (int): the number of latent elements
+		    shape_input (list): the shape of the input image (not including batch size)
+		    activation (dict): this is a dictionary of activation
+		    **kwargs: Description
 		"""
-		self.shape_input = shape_input
+		# add num latents
+		layer_params = layer_params + [[num_latents*2]]
+
+		# add additional attributes
 		self.num_latents = num_latents
-		if activations is None:
-			activations = ap.default_encoder_activations
-		layer_params = layer_params + [[self.num_latents*2]]
 
-		self._configuration_parameters = dict(
+		super().__init__(*layer_params, activation=activation, shape_input=shape_input, **kwargs)
+		
+		# set the config
+		self._config_param = dict(
 					layer_params=layer_params, 
-					shape_input=self.shape_input,
-					num_latents=self.num_latents
+					shape_input=shape_input,
+					num_latents=num_latents,
+					activation=self.activation
 					)
-
-		super().__init__(*layer_params, activation=activations, shape_input=self.shape_input)
 	
 	def call(self,inputs):
-		assert list(inputs.shape[1:]) == list(self.shape_input), "%s, %s"%(inputs.shape[1:], self.shape_input)
+		assert list(inputs.shape[1:]) == list(self.shape_input), "Invalid Input shape given: %s,  sepecified: %s"%(list(inputs.shape[1:]), self.shape_input)
 		out = super().call(inputs)
 		mean = out[:,:self.num_latents]
 		logvar = out[:,self.num_latents:]
@@ -32,11 +39,10 @@ class GaussianEncoder(base.ConvolutionalNeuralNetwork):
 		return sample, mean, logvar
 
 	def get_config(self):
-		return {**base.convert_config(self._configuration_parameters), 
-				"activations":base.convert_config(self._total_activations)} # activations are separately added 
+		return base.convert_config(self._config_param) # activation are separately added 
 
 class GaussianEncoder64(GaussianEncoder):
-	def __init__(self, num_latents=10, activations=None, **kwargs):
+	def __init__(self, num_latents=10, activation=None, **kwargs):
 		"""This is a gaussian encoder that takes in 64x64x3 images
 		This is the architecture used in beta-VAE literature
 		
@@ -44,14 +50,19 @@ class GaussianEncoder64(GaussianEncoder):
 			num_latents (int): the number of latent elements
 			shape_input (list): the shape of the input image (not including batch size)
 		"""
-		self.shape_input = [64,64,3]
-		self.layer_params = ap.simple64_layer_parameters[:]
-		if "num_channels" in kwargs:
-			self.shape_input[-1] = kwargs["num_channels"]
-		super().__init__(self.layer_params, num_latents, self.shape_input, activations, **kwargs)
+		shape_input = [64,64,3]
+		layer_params = ap.encoder64_architecture
+		if activation is None:
+			activation = ap.encoder64_activations
+		super().__init__(
+			layer_params=layer_params, 
+			num_latents=num_latents, 
+			shape_input=shape_input, 
+			activation=activation, 
+			**kwargs)
 
 class GaussianEncoder256(GaussianEncoder):
-	def __init__(self, num_latents=30, activations=None, **kwargs):
+	def __init__(self, num_latents=30, activation=None, **kwargs):
 		"""This is a gaussian encoder that takes in 512x512x3 images
 		This is the architecture used in beta-VAE literature
 		
@@ -59,14 +70,19 @@ class GaussianEncoder256(GaussianEncoder):
 			num_latents (int): the number of latent elements
 			shape_input (list): the shape of the input image (not including batch size)
 		"""
-		self.shape_input = [256,256,3]
-		self.layer_params = ap.hq256_layer_parameters[:]
-		if "num_channels" in kwargs:
-			self.shape_input[-1] = kwargs["num_channels"]
-		super().__init__(self.layer_params, num_latents, self.shape_input, activations, **kwargs)
+		shape_input = [256,256,3]
+		layer_params = ap.encoder256_architecture
+		if activation is None:
+			activation = ap.encoder256_activations
+		super().__init__(
+			layer_params=layer_params, 
+			num_latents=num_latents, 
+			shape_input=shape_input, 
+			activation=activation, 
+			**kwargs)
 
 class GaussianEncoder512(GaussianEncoder):
-	def __init__(self, num_latents=1024, activations=None, **kwargs):
+	def __init__(self, num_latents=1024, activation=None, **kwargs):
 		"""This is a gaussian encoder that takes in 512x512x3 images
 		This is the architecture used in beta-VAE literature
 		
@@ -74,12 +90,16 @@ class GaussianEncoder512(GaussianEncoder):
 			num_latents (int): the number of latent elements
 			shape_input (list): the shape of the input image (not including batch size)
 		"""
-		self.shape_input = [512,512,3]
-		self.layer_params = ap.hq512_layer_parameters[:]
-		if "num_channels" in kwargs:
-			self.shape_input[-1] = kwargs["num_channels"]
-		super().__init__(self.layer_params, num_latents, self.shape_input, activations, **kwargs)
-
+		shape_input = [512,512,3]
+		layer_params = ap.encoder512_architecture
+		if activation is None:
+			activation = ap.encoder512_activations
+		super().__init__(
+			layer_params=layer_params, 
+			num_latents=num_latents, 
+			shape_input=shape_input, 
+			activation=activation, 
+			**kwargs)
 
 def main():
 	import numpy as np

@@ -7,7 +7,7 @@ See the prebuilt_models package for more full implementations of models.
 import tensorflow as tf
 from functools import reduce
 from tensorflow.python.training.tracking.data_structures import _DictWrapper as DictWrapper
-from tensorflow.python.training.tracking.data_structures import ListWrapper as ListWrapper, NoDependency
+from tensorflow.python.training.tracking.data_structures import ListWrapper as ListWrapper
 from types import FunctionType, LambdaType, MethodType
 from inspect import signature
 
@@ -18,13 +18,13 @@ def convert_config(x):
 	elif type(x) == DictWrapper or type(x) == dict: 
 		x = dict(x)
 		r = x.keys()
+	elif isinstance(x[i], (FunctionType, LambdaType, MethodType)):
+		return "%s%s"%(x[i].__name__, str(signature(x[i])))
 	else:
 		return x
+
 	for i in r:
-		if type(x[i]) == ListWrapper or type(x[i]) == DictWrapper:
-			x[i] = convert_config(x[i]) 
-		if isinstance(x[i], (FunctionType, LambdaType, MethodType)):
-			x[i] = "%s%s"%(x[i].__name__, str(signature(x[i])))
+		x[i] = convert_config(x[i]) 
 	return x
 
 def is_feed_forward(layer_param):

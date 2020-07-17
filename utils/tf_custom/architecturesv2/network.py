@@ -79,13 +79,13 @@ class ConvolutionalNeuralNetwork(NeuralNetwork):
 		conv2d_opt_obj = block.create_option_block(conv2d_obj, pool, batch_norm)
 		
 		dense_obj = base.Dense
-		dense_opt_obj = block.create_option_block(dense_obj, batch_norm, flatten)
+		dense_opt_obj = block.create_option_block(dense_obj, batch_norm, flatten, pool)
 		
 		# custom resnet with batchnorm in internal intermediate conv layers.
 		class resnet_obj(block.ResnetBlock):
 			@classmethod
 			def get_available_layer_types(cls):
-				return super().get_available_layer_types()+[conv2d_opt_obj, batch_norm]
+				return super().get_available_layer_types()+[conv2d_opt_obj]
 
 		# resnet with external batchnorm and pooling
 		resnet_opt_obj = block.create_option_block(resnet_obj, pool, batch_norm)
@@ -114,13 +114,13 @@ class DeconvolutionalNeuralNetwork(NeuralNetwork):
 		conv2dtranspose_opt_obj = block.create_option_block(conv2dtranspose_obj, upscale, batch_norm)
 		
 		dense_obj = base.Dense
-		dense_opt_obj = block.create_option_block(dense_obj, batch_norm, reshape)
+		dense_opt_obj = block.create_option_block(dense_obj, batch_norm, reshape, upscale)
 		
 		# custom resnet with batchnorm in internal intermediate conv layers.
 		class resnet_obj(block.ResnetBlock):
 			@classmethod
 			def get_available_layer_types(cls):
-				return [conv2dtranspose_obj, conv2dtranspose_opt_obj, batch_norm]
+				return [conv2dtranspose_obj, conv2dtranspose_opt_obj]
 
 		# resnet with external batchnorm and upscaleing
 		resnet_opt_obj = block.create_option_block(resnet_obj, upscale, batch_norm)

@@ -1,13 +1,14 @@
 import os
+import shutil
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3' 
 import tensorflow as tf
 import numpy as np
 import utils as ut
 import utils.tf_custom.architecturesv2 as arc
-
 def cprint(string):
 	print('\033[94m'+string+'\033[0m')
-
+def wprint(string):
+	print('\033[91m'+string+'\033[0m')
 ########
 # Base #
 ########
@@ -46,10 +47,10 @@ def OptionWrapper_test():
 	LayerObj = arc.base.BatchNormalization
 	layer_param = ["bn"]
 	if LayerObj.check(["ap", 2]):
-		cprint("Failed OptionWrapper")
+		wprint("Failed OptionWrapper")
 		return
 	elif LayerObj.check([2]):
-		cprint("Failed OptionWrapper")
+		wprint("Failed OptionWrapper")
 		return
 	layer = LayerObj(*layer_param)
 	layer(np.ones((32,28,28,1)))
@@ -64,7 +65,6 @@ def OptionWrapper_test():
 	layer = LayerObj(*layer_param, padding="VALID", activation=tf.nn.leaky_relu)
 	layer(np.ones((32,4,4,3)))
 	cprint("Passed OptionWrapper")
-
 
 #########
 # Block #
@@ -120,7 +120,6 @@ def create_option_block_test():
 ###########
 # Network #
 ###########
-
 def NeuralNetwork_test():
 	inputs = np.random.uniform(0,1, size=[32, 512])
 	activation = {
@@ -153,7 +152,7 @@ def ConvolutionalNeuralNetwork_test():
 	layer_param = [
 		[[16,5,1],  # conv layer
 			["ap",2]], # pooling
-		[[[[32,1,1],["bn"]], [32,3,1], ["bn"], [32,3,1]], #resnet block
+		[[[[32,1,1],["bn"]], [32,3,1], [32,3,1]], #resnet block
 			["ap",2]], # pooling
 		[[[[64,1,1],["bn"]], [64,3,1], [["bn"], [64,3,1]]], ["ap",2]], 
 		[[[128,1,1], [128,3,1], [128,3,1]], ["ap",2]], 
@@ -164,7 +163,7 @@ def ConvolutionalNeuralNetwork_test():
 		]
 	a = arc.network.ConvolutionalNeuralNetwork(*layer_param, activation=activation, shape_input=[512,512,3])
 	assert a(inputs).shape == (8,4096) # the model must be run for keras to collect the trainable variables/weights
-	assert len(a.weights) == 52, str(len(a.weights))
+	assert len(a.weights) == 48, str(len(a.weights))
 	assert len(a.layers.layers) == len(layer_param)
 	cprint("Passed ConvolutionalNeuralNetwork")
 
@@ -179,37 +178,147 @@ def DeconvolutionalNeuralNetwork_test():
 		7:resnet_proj_activations, 
 		-1:tf.keras.activations.linear}
 	layer_param = [
-		[[4096]],
-		[[8*8*256],["reshape", [8,8,256]]],
-		[[[256,3,1], [256,3,1]], ["up",1]],
+		[4096],
+		[[8*8*256],["reshape", [8,8,256]], ["up",1]], 
+		[[[256,3,1], [256,3,1]], ["up",2]], 
 		[[[256,3,1], [256,3,1]], ["up",2]], 
 		[[[256,1,1], [256,3,1], [256,3,1]], ["up",2]], 
 		[[[128,1,1], [128,3,1], [128,3,1]], ["up",2]], 
 		[[[[64,1,1],["bn"]], [64,3,1], [["bn"], [64,3,1]]], ["up",2]], 
-		[[[[32,1,1],["bn"]], [32,3,1], ["bn"], [32,3,1]], ["up",2]], 
-		[[3,5,1],["up",2]],
+		[[[[32,1,1],["bn"]], [32,3,1], [32,3,1]], ["up",2]], 
+		[3,5,1],
 		]
 	a = arc.network.DeconvolutionalNeuralNetwork(*layer_param, activation=activation, shape_input=[4096])
 	#for i in a.layers.layers: print(i.output_shape)
 	assert a(inputs).shape == (8,512,512,3) # the model must be run for keras to collect the trainable variables/weights
-	assert len(a.weights) == 54, str(len(a.weights))
+	assert len(a.weights) == 50, str(len(a.weights))
 	assert len(a.layers.layers) == len(layer_param)
 	cprint("Passed DeconvolutionalNeuralNetwork")
 
 ###########
 # Encoder #
 ###########
+def GaussianEncoder_test():
+	inputs = np.random.randint(0,255,size=(32,64,64,3), dtype=np.uint8).astype(np.float32)
+	encoder = arc.encoder.GaussianEncoder64(num_latents=10)
+	#print(encoder.get_config())
+	#print(encoder.layers.layers)
+	out = encoder(inputs)
+	assert len(out) == 3, "samples, mean, logvar"
+	assert tuple(out[0].shape) == (32,10), "%s, %s"%(out[0].shape, (32,10))
+	cprint("Passed GaussianEncoder64")
 
+	inputs = np.random.randint(0,255,size=(8,256,256,3), dtype=np.uint8).astype(np.float32)
+	encoder = arc.encoder.GaussianEncoder256(num_latents=10)
+	#print(encoder.get_config())
+	#print(encoder.layers.layers)
+	out = encoder(inputs)
+	assert len(out) == 3, "samples, mean, logvar"
+	assert tuple(out[0].shape) == (8,10), "%s, %s"%(out[0].shape, (8,10))
+	cprint("Passed GaussianEncoder256")
+
+	inputs = np.random.randint(0,255,size=(8,512,512,3), dtype=np.uint8).astype(np.float32)
+	encoder = arc.encoder.GaussianEncoder512(num_latents=10)
+	#print(encoder.get_config())
+	#print(encoder.layers.layers)
+	out = encoder(inputs)
+	assert len(out) == 3, "samples, mean, logvar"
+	assert tuple(out[0].shape) == (8,10), "%s, %s"%(out[0].shape, (8,10))
+	cprint("Passed GaussianEncoder512")
 
 ###########
 # Decoder #
 ###########
+def Decoder_test():
+	inputs = np.random.uniform(0,1,size=(32,10))
+	decoder = arc.decoder.Decoder64()
+	#print(decoder.get_config())
+	#print(decoder.layers.layers)
+	out = decoder(inputs)
+	cprint("Passed Decoder64")
 
+	inputs = np.random.uniform(0,1,size=(8,30))
+	decoder = arc.decoder.Decoder256(num_latents=30)
+	#print(decoder.get_config())
+	print(decoder.layers.layers)
+	out = decoder(inputs)
+	cprint("Passed Decoder256")
+
+	inputs = np.random.uniform(0,1,size=(8,1024))
+	decoder = arc.decoder.Decoder512(num_latents=1024)
+	#print(decoder.get_config())
+	#print(decoder.layers.layers)
+	out = decoder(inputs)
+	cprint("Passed Decoder512")
 
 #######
 # VAE #
 #######
+def VariationalAutoencoder_test():
+	def custom_exit(files_to_remove=None):#roughly made exit to cleanup
+		shutil.rmtree(files_to_remove)
+		exit()
+	batch_size = 8
+	size = [batch_size,256,256,3]
+	inputs = np.random.uniform(0,1,size=size).astype(np.float32)
+	a = arc.vae.VariationalAutoencoder()
+	#a = arc.vae.BetaTCVAE(2)
+	a.create_encoder_decoder_256()
 
+	# test get reconstruction, only asserts shape
+	if not a(inputs).shape == tuple(size):
+		print("input shape is different from size, change spec")
+		custom_exit()
+	
+	# test get vae losses
+	if not len(a.losses) == 1:
+		print("regularizer loss not included")
+		custom_exit()
+
+	# test model saving
+	testdir = "test"
+	if not os.path.exists(testdir):
+		os.mkdir(testdir)
+	testfile1 = os.path.join(testdir, "test.h5")
+	testfile2 = os.path.join(testdir, "test2.h5")
+	w1 = a.get_weights()
+	a.save_weights(testfile1)
+	from inspect import signature
+	#print(a._updated_config())
+
+	# test model training
+	#model = 
+	a.compile(optimizer=tf.keras.optimizers.Adam(),
+		loss=tf.keras.losses.MSE)
+	a.fit(inputs, np.random.randint(0,255,size=size, dtype=np.uint8).astype(np.float32), batch_size=batch_size, epochs=3)
+	w3 = a.get_weights()
+
+	# test model loading
+	a.load_weights(testfile1)
+	w2 = a.get_weights()
+	a.summary()
+
+
+	# test second model loading
+
+	if not (w2[0] == w1[0]).all():
+		print("weights loading issue")
+		custom_exit(testdir)
+
+	if (w3[0] == w1[0]).all():
+		print("training weights updating issue")
+		custom_exit(testdir)
+
+
+	#tf.keras.backend.clear_session()
+	c = arc.vae.BetaTCVAE(2, name="test")
+	print(c.layers)
+	c.save_weights(testfile2)
+
+
+	cprint("Passed VariationalAutoencoder")
+	shutil.rmtree(testdir)
+	#custom_exit(testdir)
 
 
 def test_all():
@@ -224,3 +333,8 @@ def test_all():
 	NeuralNetwork_test()
 	ConvolutionalNeuralNetwork_test()
 	DeconvolutionalNeuralNetwork_test()
+
+	GaussianEncoder_test()
+	Decoder_test()
+
+	VariationalAutoencoder_test()
