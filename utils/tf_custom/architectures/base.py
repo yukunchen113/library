@@ -390,7 +390,7 @@ class ConvolutionalNeuralNetwork(ConvNetBase):
 		>>> print(len(a.weights))
 	Args:
 		activations: This is the activation functions that will be performed on the network
-		input_shape: This is the shape of the input, not including the batch size.
+		shape_input: This is the shape of the input, not including the batch size.
 		*layer_params: convolutional layers specifications in order.
 	"""
 	def __init__(self, *layer_params, activation=None, shape_input=None):
