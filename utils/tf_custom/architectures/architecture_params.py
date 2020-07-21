@@ -1,5 +1,9 @@
 import tensorflow as tf
 import copy
+
+default_decoder_activations = {"default":tf.nn.leaky_relu, -1:tf.math.sigmoid}
+default_encoder_activations = {"default":tf.nn.leaky_relu, -1:tf.keras.activations.linear}
+
 ###############################
 # gaussian64 vae architecture #
 ###############################
@@ -18,9 +22,8 @@ decoder64_architecture = [
 	[32,4,2],
 	[3,4,2],
 	]
-decoder64_activations = {"default":tf.nn.leaky_relu, -1:tf.math.sigmoid}
-encoder64_activations = {"default":tf.nn.leaky_relu, -1:tf.keras.activations.linear}
-
+decoder64_activations = {**default_decoder_activations}
+encoder64_activations = {**default_encoder_activations}
 
 ################################
 # gaussian256 vae architecture #
@@ -45,15 +48,15 @@ decoder256_architecture = [
 		[3,5,1], 
 		]
 decoder256_activations = {
-	**decoder64_activations, 
-	**{i:{"default":decoder64_activations["default"], 	# these extra activations are for resnet, this is not a generalized method.
-		0:{"default":decoder64_activations["default"],	# projections at the first layer of the block (if resnet uses projection)
+	**default_decoder_activations, 
+	**{i:{"default":default_decoder_activations["default"], 	# these extra activations are for resnet, this is not a generalized method.
+		0:{"default":default_decoder_activations["default"],	# projections at the first layer of the block (if resnet uses projection)
 			0:tf.keras.activations.linear}} for i in [4,5,6]}}  
 
 encoder256_activations = {
-	**encoder64_activations, 
-	**{i:{"default":encoder64_activations["default"], 	# these extra activations are for resnet, this is not a generalized method.
-		0:{"default":encoder64_activations["default"],	# projections at the first layer of the block (if resnet uses projection)
+	**default_encoder_activations, 
+	**{i:{"default":default_encoder_activations["default"], 	# these extra activations are for resnet, this is not a generalized method.
+		0:{"default":default_encoder_activations["default"],	# projections at the first layer of the block (if resnet uses projection)
 			0:tf.keras.activations.linear}} for i in [1,2,3]}}  
 
 ################################
@@ -81,15 +84,15 @@ decoder512_architecture = [
 		[3,5,1], 
 		]
 decoder512_activations = {
-	**decoder64_activations, 
-	**{i:{"default":decoder64_activations["default"], 	# these extra activations are for resnet, this is not a generalized method.
-		0:{"default":decoder64_activations["default"],	# projections at the first layer of the block (if resnet uses projection)
+	**default_decoder_activations, 
+	**{i:{"default":default_decoder_activations["default"], 	# these extra activations are for resnet, this is not a generalized method.
+		0:{"default":default_decoder_activations["default"],	# projections at the first layer of the block (if resnet uses projection)
 			0:tf.keras.activations.linear}} for i in [4,5,6,7]}}
 
 encoder512_activations = {
-	**encoder64_activations, 
-	**{i:{"default":encoder64_activations["default"], 	# these extra activations are for resnet, this is not a generalized method.
-		0:{"default":encoder64_activations["default"],	# projections at the first layer of the block (if resnet uses projection)
+	**default_encoder_activations, 
+	**{i:{"default":default_encoder_activations["default"], 	# these extra activations are for resnet, this is not a generalized method.
+		0:{"default":default_encoder_activations["default"],	# projections at the first layer of the block (if resnet uses projection)
 			0:tf.keras.activations.linear}} for i in [1,2,3,4]}}
 
 

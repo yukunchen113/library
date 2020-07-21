@@ -28,6 +28,14 @@ def convert_config(x):
 		x[i] = convert_config(x[i]) 
 	return x
 
+def get_ancestors(item):
+	if inspect.isclass(item):
+		ancestors = [par for par in inspect.getmro(item)]
+	else:
+		ancestors = [par for par in inspect.getmro(item.__class__)]
+	return ancestors
+
+
 class hybridmethod(object):
 	# this code is a method that handles self and cls, code is from: https://stackoverflow.com/questions/18078744/python-hybrid-between-regular-method-and-classmethod
 	def __init__(self, func):
@@ -41,6 +49,8 @@ class hybridmethod(object):
 		hybrid.__func__ = hybrid.im_func = self.func
 		hybrid.__self__ = hybrid.im_self = context
 		return hybrid
+
+
 
 class ValidateParameters:
 	@hybridmethod
@@ -94,7 +104,7 @@ class BaseTFWrapper(ValidateParameters):
 				has_var_keyword = True
 		# has_var_keyword only counts if base_func is an instance of BaseTFWrapper, since there
 		# needs to be an is_kwarg_valid. Also, since tf functions has ** kwargs, we have to stop before there.  
-		is_base_tf_wrapper = "BaseTFWrapper" in [i.__name__ for i in inspect.getmro(self.base_func.__class__)]
+		is_base_tf_wrapper = BaseTFWrapper in get_ancestors(self.base_func)
 		return kwarg in sig.parameters or (has_var_keyword and is_base_tf_wrapper)
 
 	def __call__(self, *ar, **kw):
@@ -156,6 +166,13 @@ class OptionWrapper(BaseTFWrapper):
 		assert not identifier is None, "identifier must be specified"
 		super().__init__(*ar, **kw)
 		self.identifier = identifier
+
+	def _check(self, layer_param, is_check_verbose=False, **kw):
+		if ValidateParameters in get_ancestors(self.base_func):
+			filtered_layer_params = self.additional_check(layer_param)
+			if filtered_layer_params == False: return False
+			return self.base_func.check(layer_param=filtered_layer_params, is_check_verbose=is_check_verbose)
+		return True
 
 	def additional_check(self, layer_param, is_check_verbose=False, **kw):
 		if not layer_param[0] == self.identifier: 

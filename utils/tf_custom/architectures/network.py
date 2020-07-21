@@ -41,7 +41,6 @@ class NeuralNetwork(block.NetworkBlock):
 		dense_opt_obj = block.create_option_block(dense_obj, batch_norm)
 		return [batch_norm, dense_obj, dense_opt_obj]
 
-
 	def _create_sequential(self):
 		layers = self.layers
 		if not self.shape_input is None:
@@ -56,7 +55,6 @@ class NeuralNetwork(block.NetworkBlock):
 			for layer in self.layers:
 				pred = layer(pred)
 		return pred
-
 
 class ConvolutionalNeuralNetwork(NeuralNetwork):
 	"""

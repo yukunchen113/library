@@ -28,7 +28,57 @@ def apply_activation(layer_num, activation, num_layers):
 		activation = activation
 	return activation
 
-class NetworkBlock(tf.keras.layers.Layer, base.ValidateParameters):
+class ValidateBlock(base.ValidateParameters):
+	@classmethod
+	def get_available_layer_types(cls):
+		"""
+		This must be a class function
+		This creates a list of classes which will create a layer when initialized with parameters
+		This function should be overwritten to add functions. For ones with the same checks, 
+		additional_check should be also defined here. 
+		"""
+		available_layers_types = []
+		return available_layers_types
+
+	@classmethod
+	def _check(cls, layer_param, is_check_verbose=False, **kw):
+		assert type(is_check_verbose) == bool
+		# layer_param can not be empty
+		if not layer_param:
+			if is_check_verbose: print("layer_param is empty.")
+			return False
+
+		# since layer_param[i] has to be loaded in using *layer_param[i], we have to make sure all of the elements in layer_param are lists
+		for lp in layer_param:
+			if not (type(lp) == ListWrapper or type(lp) == tuple or type(lp) == list):
+				if is_check_verbose: print("all of the elements in layer_param have to be convertable to lists, eg. tuple, list, ListWrapper")
+				return False
+
+		# checks valid layer type
+		if not cls.get_layer_type(layer_param=layer_param, is_check_verbose=is_check_verbose): return False
+		
+		return True
+
+	@classmethod
+	def get_layer_type(cls, layer_param, is_check_verbose=False, **kw):
+		# checks all the build layers 
+		LayerObjs = cls.get_available_layer_types()
+		layer_types = []
+		for layer in layer_param:
+			correct_layer_type = []
+			for i, LayerObj in enumerate(LayerObjs):
+				if LayerObj.check(layer_param=layer):
+					correct_layer_type.append(i)
+			if not len(correct_layer_type) == 1: 
+				if is_check_verbose: print("\nThere must be one matching LayerObj but there is %d available layers for layer parameter \"%s\". Available layers:"%(len(
+					correct_layer_type), layer), *[LayerObjs[i] for i in correct_layer_type] or ["None"],
+				"\n\tPlease specify additional_check for handling of this layer type: %s\n"%(cls.__name__))
+				return False # conflicting or nonexistent layer type
+			layer_types.append(correct_layer_type[0])
+		return layer_types
+
+
+class NetworkBlock(tf.keras.layers.Layer, ValidateBlock):
 	"""provides basic check for network and activation
 	"""
 	def __init__(self, *layer_param, activation=None, **kw):
@@ -57,47 +107,12 @@ class NetworkBlock(tf.keras.layers.Layer, base.ValidateParameters):
 			layer = available_layers_types[lt](
 				*lp, activation=self.apply_activation(i))
 			self.layers.append(layer)
-
-	@classmethod
-	def get_available_layer_types(cls):
-		"""
-		This must be a class function
-		This creates a list of classes which will create a layer when initialized with parameters
-		This function should be overwritten to add functions. For ones with the same checks, 
-		additional_check should be also defined here. 
-		"""
-		available_layers_types = []
-		return available_layers_types
-
-
-	def apply_activation(self, layer_num):
-		"""
-		gets the correct activation for a given layer number. Starts at layer 0 to n-1
-		"""
-		return apply_activation(
-			layer_num=layer_num,
-			activation=self.activation,
-			num_layers=self.num_layers)
-
+	
 	@classmethod
 	def _check(cls, layer_param, is_check_verbose=False, **kw):
-		assert type(is_check_verbose) == bool
-		# layer_param can not be empty
-		if not layer_param:
-			if is_check_verbose: print("layer_param is empty.")
-			return False
-
-		# since layer_param[i] has to be loaded in using *layer_param[i], we have to make sure all of the elements in layer_param are lists
-		for lp in layer_param:
-			if not (type(lp) == ListWrapper or type(lp) == tuple or type(lp) == list):
-				if is_check_verbose: print("all of the elements in layer_param have to be convertable to lists, eg. tuple, list, ListWrapper")
-				return False
-
-		# checks valid layer type
-		layer_types = cls.get_layer_type(layer_param=layer_param, is_check_verbose=is_check_verbose)
-		if not layer_types: return False
-		
 		# check activation if activation are specified
+		if not super()._check(layer_param=layer_param, is_check_verbose=is_check_verbose,**kw): return False
+		layer_types = cls.get_layer_type(layer_param=layer_param, is_check_verbose=is_check_verbose)
 		if "activation" in kw:
 			activation = kw["activation"]
 			if type(activation) == dict or type(activation) == DictWrapper:
@@ -116,10 +131,7 @@ class NetworkBlock(tf.keras.layers.Layer, base.ValidateParameters):
 			# only NetworkBlock can have dict type activations
 			available_lt = cls.get_available_layer_types()
 			for i,lt in enumerate(layer_types):
-				if inspect.isclass(available_lt[lt]):
-					ancestors = [par for par in inspect.getmro(available_lt[lt])]
-				else:
-					ancestors = [par for par in inspect.getmro(available_lt[lt].__class__)]
+				ancestors = base.get_ancestors(available_lt[lt])
 				lt_activation = apply_activation(layer_num=i, activation=activation, num_layers=len(layer_param))
 				if (not NetworkBlock in ancestors) and (type(lt_activation) == dict or type(lt_activation) == DictWrapper):
 					if is_check_verbose: print("only NetworkBlock can have dict type activations but %s activation is used for %s which has ancestors %s"%(
@@ -127,23 +139,16 @@ class NetworkBlock(tf.keras.layers.Layer, base.ValidateParameters):
 					return False
 		return True
 
-	@classmethod
-	def get_layer_type(cls, layer_param, is_check_verbose=False, **kw):
-		# checks all the build layers 
-		LayerObjs = cls.get_available_layer_types()
-		layer_types = []
-		for layer in layer_param:
-			correct_layer_type = []
-			for i, LayerObj in enumerate(LayerObjs):
-				if LayerObj.check(layer_param=layer):
-					correct_layer_type.append(i)
-			if not len(correct_layer_type) == 1: 
-				if is_check_verbose: print("\nThere must be one matching LayerObj but there is %d available layers for layer parameter \"%s\". Available layers:"%(len(
-					correct_layer_type), layer), *[LayerObjs[i] for i in correct_layer_type] or ["None"],"\n\tPlease specify additional_check for handling of this layer type\n")
-				return False # conflicting or nonexistent layer type
-			layer_types.append(correct_layer_type[0])
-		return layer_types
 
+	def apply_activation(self, layer_num):
+		"""
+		gets the correct activation for a given layer number. Starts at layer 0 to n-1
+		"""
+		return apply_activation(
+			layer_num=layer_num,
+			activation=self.activation,
+			num_layers=self.num_layers)
+	
 	def call(self, inputs):
 		pred = inputs
 		for layer in self.layers:
@@ -229,10 +234,7 @@ def create_option_block(base_obj, *ar):
 	# other than base_obj, all others must inhereit OptionWrapper
 	# ar must be additional options
 	for ar_obj in ar:
-		if inspect.isclass(ar_obj):
-			ancestors = [par for par in inspect.getmro(ar_obj)]
-		else:
-			ancestors = [par for par in inspect.getmro(ar_obj.__class__)]
+		ancestors = base.get_ancestors(ar_obj)
 		assert base.OptionWrapper in ancestors, "other than base_obj, all others must inhereit OptionWrapper"
 
 	class OptionNetworkBlock(NetworkBlock):

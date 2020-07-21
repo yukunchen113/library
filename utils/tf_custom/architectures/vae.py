@@ -4,10 +4,11 @@ from utils.other_library_tools.disentanglementlib_tools import gaussian_log_dens
 from . import encoder as enc
 from . import decoder as dec
 class VariationalAutoencoder(tf.keras.Model):
-	def __init__(self, name="variational_autoencoder", **kwargs):
+	def __init__(self, name="variational_autoencoder", is_create_default_vae=True, **kwargs):
 		# default model
 		super().__init__(name=name)
-		self.create_default_vae(**kwargs)
+		if is_create_default_vae:
+			self.create_default_vae(**kwargs)
 
 	def create_default_vae(self, **kwargs):
 		self.create_encoder_decoder_64(**kwargs)
@@ -30,6 +31,10 @@ class VariationalAutoencoder(tf.keras.Model):
 	def regularizer(self, sample, mean, logvar):
 		return kl_divergence_with_normal(mean, logvar)
 	
+	def set_encoder_decoder(self, encoder, decoder):
+		self._encoder = encoder
+		self._decoder = decoder
+
 	def create_encoder_decoder_64(self, **kwargs):
 		# default encoder decoder pair:
 		self._encoder = enc.GaussianEncoder64(**kwargs)

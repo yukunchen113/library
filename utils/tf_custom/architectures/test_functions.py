@@ -323,8 +323,8 @@ def VariationalAutoencoder_test():
 
 def test_all():
 	ValidateParameters_test()
-	OptionWrapper_test()
 	Conv2D_test()
+	OptionWrapper_test()
 
 	ConvBlock_test()
 	ResnetBlock_test()
