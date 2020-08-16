@@ -12,7 +12,7 @@ def wprint(string):
 ########
 # Base #
 ########
-def ValidateParameters_test():
+def test_ValidateParameters():
 	LayerObj = arc.base.ValidateParameters
 	def test_cases(LayerObj):
 		check = LayerObj.check([])
@@ -35,7 +35,7 @@ def ValidateParameters_test():
 	
 	cprint("Passed ValidateParameters")
 
-def Conv2D_test():
+def test_Conv2D():
 	layer_param = [3,1,2]
 	layer = arc.base.Conv2D(*layer_param, padding="VALID", activation=tf.nn.leaky_relu, TEST="TEST")
 	layer(np.ones((32,4,4,3)))
@@ -43,7 +43,7 @@ def Conv2D_test():
 	layer(np.ones((32,28,28,1)))
 	cprint("Passed Conv2D")
 
-def OptionWrapper_test():
+def test_OptionWrapper():
 	LayerObj = arc.base.BatchNormalization
 	layer_param = ["bn"]
 	if LayerObj.check(["ap", 2]):
@@ -69,7 +69,7 @@ def OptionWrapper_test():
 #########
 # Block #
 #########
-def ConvBlock_test():
+def test_ConvBlock():
 	inputs = np.random.normal(size=[32,64,64,3])
 	activation = tf.nn.relu #{"default":tf.nn.relu, -1:tf.math.sigmoid}
 	layer_param = [
@@ -87,7 +87,7 @@ def ConvBlock_test():
 	#cprint([i.shape for i in a.get_weights()])
 	cprint("Passed ConvBlock")
 
-def ResnetBlock_test():
+def test_ResnetBlock():
 	inputs = np.random.normal(size=[32,64,64,3])
 	activation = {"default":tf.nn.relu, 0:tf.keras.activations.linear, -1:tf.math.sigmoid}
 	layer_param = [
@@ -105,7 +105,7 @@ def ResnetBlock_test():
 	#cprint([i.shape for i in a.get_weights()])
 	cprint("Passed ResnetBlock")
 
-def create_option_block_test():
+def test_create_option_block():
 	layer_param = [[3,1,2],["bn"]]
 	conv2d_obj = arc.base.Conv2D
 	conv2d_obj.default_kw = dict(padding="VALID")
@@ -120,7 +120,7 @@ def create_option_block_test():
 ###########
 # Network #
 ###########
-def NeuralNetwork_test():
+def test_NeuralNetwork():
 	inputs = np.random.uniform(0,1, size=[32, 512])
 	activation = {
 		"default":tf.nn.relu, 
@@ -139,7 +139,7 @@ def NeuralNetwork_test():
 	assert len(a.layers.layers) == len(layer_param)
 	cprint("Passed NeuralNetwork")
 
-def ConvolutionalNeuralNetwork_test():
+def test_ConvolutionalNeuralNetwork():
 	inputs = np.random.randint(0,255,size=[8,512,512,3], dtype=np.uint8).astype(np.float32)
 	resnet_proj_activations = {"default":tf.nn.relu, 0:tf.keras.activations.linear}
 	activation = {
@@ -167,7 +167,7 @@ def ConvolutionalNeuralNetwork_test():
 	assert len(a.layers.layers) == len(layer_param)
 	cprint("Passed ConvolutionalNeuralNetwork")
 
-def DeconvolutionalNeuralNetwork_test():
+def test_DeconvolutionalNeuralNetwork():
 	inputs = np.random.randint(0,255,size=(8,4096), dtype=np.uint8).astype(np.float32)
 	resnet_proj_activations = {"default":tf.nn.relu, 0:tf.keras.activations.linear}
 	activation = {
@@ -198,7 +198,7 @@ def DeconvolutionalNeuralNetwork_test():
 ###########
 # Encoder #
 ###########
-def GaussianEncoder_test():
+def test_GaussianEncoder():
 	inputs = np.random.randint(0,255,size=(32,64,64,3), dtype=np.uint8).astype(np.float32)
 	encoder = arc.encoder.GaussianEncoder64(num_latents=10)
 	#print(encoder.get_config())
@@ -229,7 +229,7 @@ def GaussianEncoder_test():
 ###########
 # Decoder #
 ###########
-def Decoder_test():
+def test_Decoder():
 	inputs = np.random.uniform(0,1,size=(32,10))
 	decoder = arc.decoder.Decoder64()
 	#print(decoder.get_config())
@@ -254,7 +254,7 @@ def Decoder_test():
 #######
 # VAE #
 #######
-def VariationalAutoencoder_test():
+def test_VariationalAutoencoder():
 	def custom_exit(files_to_remove=None):#roughly made exit to cleanup
 		shutil.rmtree(files_to_remove)
 		exit()
@@ -267,13 +267,13 @@ def VariationalAutoencoder_test():
 
 	# test get reconstruction, only asserts shape
 	if not a(inputs).shape == tuple(size):
-		print("input shape is different from size, change spec")
 		custom_exit()
+		assert False, "input shape is different from size, change spec"
 	
 	# test get vae losses
 	if not len(a.losses) == 1:
-		print("regularizer loss not included")
 		custom_exit()
+		assert False, "regularizer loss not included"
 
 	# test model saving
 	testdir = "test"
@@ -302,17 +302,16 @@ def VariationalAutoencoder_test():
 	# test second model loading
 
 	if not (w2[0] == w1[0]).all():
-		print("weights loading issue")
 		custom_exit(testdir)
+		assert False, "weights loading issue"
 
 	if (w3[0] == w1[0]).all():
-		print("training weights updating issue")
 		custom_exit(testdir)
+		assert False, "training weights updating issue"
 
 
 	#tf.keras.backend.clear_session()
 	c = arc.vae.BetaTCVAE(2, name="test")
-	print(c.layers)
 	c.save_weights(testfile2)
 
 
@@ -322,19 +321,19 @@ def VariationalAutoencoder_test():
 
 
 def test_all():
-	ValidateParameters_test()
-	Conv2D_test()
-	OptionWrapper_test()
+	test_ValidateParameters()
+	test_Conv2D()
+	test_OptionWrapper()
 
-	ConvBlock_test()
-	ResnetBlock_test()
-	create_option_block_test()
+	test_ConvBlock()
+	test_ResnetBlock()
+	test_create_option_block()
 
-	NeuralNetwork_test()
-	ConvolutionalNeuralNetwork_test()
-	DeconvolutionalNeuralNetwork_test()
+	test_NeuralNetwork()
+	test_ConvolutionalNeuralNetwork()
+	test_DeconvolutionalNeuralNetwork()
 
-	GaussianEncoder_test()
-	Decoder_test()
+	test_GaussianEncoder()
+	test_Decoder()
 
-	VariationalAutoencoder_test()
+	test_VariationalAutoencoder()

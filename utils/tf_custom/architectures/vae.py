@@ -75,25 +75,6 @@ class VariationalAutoencoder(tf.keras.Model):
 	def decoder(self):
 		return self._decoder
 
-
-class BetaTCVAE(VariationalAutoencoder):
-	def __init__(self, beta, name="BetaTCVAE", **kwargs):
-		super().__init__(name=name, **kwargs)
-		self.beta = beta
-
-	def regularizer(self, sample, mean, logvar):
-		# regularization uses disentanglementlib method
-		kl_loss = kl_divergence_with_normal(mean, logvar)
-		kl_loss = tf.reduce_sum(kl_loss,1)
-		tc = (self.beta - 1) * total_correlation(sample, mean, logvar)
-		return tc + kl_loss
-	
-	def get_config(self):
-		config_param = {
-			**super().get_config(),
-			"beta":self.beta}
-		return config_param
-
 class BetaVAE(VariationalAutoencoder):
 	def __init__(self, beta, name="BetaVAE", **kwargs):
 		super().__init__(name=name, **kwargs)
@@ -109,4 +90,31 @@ class BetaVAE(VariationalAutoencoder):
 		config_param = {
 			**super().get_config(),
 			"beta":self.beta}
+		return config_param
+
+class BetaTCVAE(BetaVAE):
+	def __init__(self, beta, name="BetaTCVAE", **kwargs):
+		super().__init__(beta=beta, name=name, **kwargs)
+
+	def regularizer(self, sample, mean, logvar):
+		# regularization uses disentanglementlib method
+		kl_loss = kl_divergence_with_normal(mean, logvar)
+		kl_loss = tf.reduce_sum(kl_loss,1)
+		tc = (self.beta - 1) * total_correlation(sample, mean, logvar)
+		return tc + kl_loss
+
+class JointVAE(BetaVAE):
+	def __init__(self, beta, name="JointVAE", **kwargs):
+		super().__init__(name=name, **kwargs)
+
+
+	def regularizer(self, sample, mean, logvar):
+		# regularization uses disentanglementlib method
+		pass
+	
+	def get_config(self):
+		config_param = {
+			**super().get_config(),
+
+			}
 		return config_param
